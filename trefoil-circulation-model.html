@@ -1,0 +1,2290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Trefoil Campus — Site Access &amp; Circulation Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{
+    --ink:#0d1117;
+    --graphite:#1a2029;
+    --line:rgba(226,232,240,.14);
+    --paper:#eef1f5;
+    --dim:#8b95a4;
+    --ochre:#e0a33c;
+    --blueprint:#5fb6d4;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;background:#05070a;overflow:hidden;
+    font-family:'Archivo',system-ui,sans-serif;color:var(--paper);}
+  #stage{position:fixed;inset:0;}
+  canvas{display:block;touch-action:none;cursor:grab;}
+  canvas:active{cursor:grabbing;}
+
+  /* ---------- loading veil ---------- */
+  #veil{position:fixed;inset:0;z-index:90;background:#05070a;display:flex;
+    align-items:center;justify-content:center;flex-direction:column;gap:18px;
+    transition:opacity .9s ease;}
+  #veil .stamp{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.42em;
+    text-transform:uppercase;color:var(--ochre);}
+  #veil .rule{width:min(260px,54vw);height:1px;background:rgba(255,255,255,.12);position:relative;overflow:hidden;}
+  #veil .rule i{position:absolute;inset:0;background:var(--ochre);transform:translateX(-100%);
+    animation:sweep 1.8s cubic-bezier(.4,0,.2,1) forwards;}
+  @keyframes sweep{to{transform:translateX(0);}}
+  #veil small{font-family:'JetBrains Mono',monospace;font-size:10px;color:#4d5663;letter-spacing:.14em;}
+
+  /* ---------- shared panel treatment: drafting-sheet cartouche ---------- */
+  .sheet{position:fixed;background:rgba(10,13,18,.78);backdrop-filter:blur(18px) saturate(150%);
+    -webkit-backdrop-filter:blur(18px) saturate(150%);
+    border:1px solid var(--line);box-shadow:0 18px 48px rgba(0,0,0,.5);}
+  .cap{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.2em;
+    text-transform:uppercase;color:#6b7684;margin:0 0 8px;display:block;}
+
+  /* title block */
+  #titleblock{top:0;left:0;padding:16px 20px 14px;border-left:0;border-top:0;max-width:min(390px,74vw);}
+  #titleblock .proj{font-size:11px;letter-spacing:.06em;color:var(--ochre);
+    font-family:'JetBrains Mono',monospace;text-transform:uppercase;margin:0 0 7px;}
+  #titleblock h1{font-size:clamp(15px,2.4vw,21px);line-height:1.15;margin:0;font-weight:800;letter-spacing:-.02em;}
+  #titleblock h1 em{font-style:normal;color:var(--dim);font-weight:500;}
+  #titleblock .meta{margin:10px 0 0;display:grid;grid-template-columns:auto 1fr;gap:3px 14px;
+    font-family:'JetBrains Mono',monospace;font-size:10px;color:#7b8593;}
+  #titleblock .meta b{color:var(--paper);font-weight:500;}
+  #titleblock .caveat{margin:11px 0 0;font-size:10.5px;line-height:1.55;color:#c8ab74;
+    border-left:2px solid rgba(224,163,60,.55);padding:2px 0 2px 9px;}
+
+  /* control cartouche */
+  #controls{left:0;bottom:0;padding:14px 18px 16px;width:272px;border-left:0;border-bottom:0;}
+  .grp{margin-bottom:12px;}
+  .grp:last-child{margin-bottom:0;}
+  .seg{display:flex;gap:4px;flex-wrap:wrap;}
+  .seg button{flex:1 1 auto;min-width:0;font-family:'JetBrains Mono',monospace;font-size:10.5px;
+    letter-spacing:.03em;padding:6px 8px;background:rgba(255,255,255,.035);color:#aeb7c3;
+    border:1px solid rgba(255,255,255,.07);cursor:pointer;transition:.16s;white-space:nowrap;}
+  .seg button:hover{background:rgba(255,255,255,.08);color:#fff;}
+  .seg button.on{background:var(--ochre);border-color:var(--ochre);color:#17120a;font-weight:700;}
+  .seg.wide button{flex:1 1 45%;}
+
+  /* time scrubber */
+  #clock{left:50%;bottom:0;transform:translateX(-50%);padding:11px 20px 13px;
+    display:flex;align-items:center;gap:14px;border-bottom:0;}
+  #clock .t{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;
+    color:var(--ochre);min-width:60px;letter-spacing:.02em;}
+  #clock .t small{display:block;font-size:8.5px;letter-spacing:.18em;color:#6b7684;font-weight:400;}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:min(260px,44vw);height:2px;
+    background:linear-gradient(90deg,#2b3444,#5c6879,#2b3444);outline:none;border-radius:2px;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;
+    border-radius:50%;background:var(--ochre);cursor:grab;border:2px solid #0d1117;
+    box-shadow:0 0 0 1px var(--ochre);}
+  input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--ochre);
+    cursor:grab;border:2px solid #0d1117;}
+
+  /* legend */
+  #legend{top:0;right:0;padding:14px 18px 16px;border-right:0;border-top:0;min-width:196px;}
+  #legend .row{display:flex;align-items:center;gap:9px;margin:5px 0;
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#b6bec9;}
+  #legend .sw{width:10px;height:10px;flex:none;border:1px solid rgba(255,255,255,.28);}
+
+  /* schedule / stats */
+  #schedule{right:0;bottom:0;padding:13px 18px 15px;border-right:0;border-bottom:0;min-width:200px;}
+  #schedule .row{display:flex;justify-content:space-between;gap:20px;
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#8e97a4;margin:4px 0;}
+  #schedule .row b{color:var(--paper);font-weight:600;}
+  #schedule .row.hi b{color:var(--ochre);}
+
+  /* north point */
+  #north{top:14px;left:50%;transform:translateX(-50%);width:44px;height:44px;opacity:.9;}
+  #north svg{width:100%;height:100%;}
+
+  /* scale bar */
+  #scalebar{position:fixed;left:50%;transform:translateX(-50%);bottom:74px;
+    font-family:'JetBrains Mono',monospace;font-size:9px;color:#77808d;letter-spacing:.14em;
+    display:flex;align-items:center;gap:8px;pointer-events:none;}
+  #scalebar .bar{display:flex;height:5px;border:1px solid #6b7684;}
+  #scalebar .bar i{width:26px;height:100%;}
+  #scalebar .bar i:nth-child(odd){background:#6b7684;}
+
+  #hint{position:fixed;left:50%;transform:translateX(-50%);bottom:118px;
+    font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#59616e;letter-spacing:.1em;
+    pointer-events:none;transition:opacity .6s;}
+
+  #uiToggle{position:fixed;top:10px;right:10px;z-index:40;display:none;
+    width:38px;height:38px;background:rgba(10,13,18,.85);border:1px solid var(--line);
+    color:var(--paper);font-size:15px;cursor:pointer;backdrop-filter:blur(12px);}
+  body.bare .sheet,body.bare #scalebar,body.bare #hint,body.bare #north{opacity:0;pointer-events:none;}
+  .sheet,#scalebar,#hint,#north{transition:opacity .35s ease;}
+
+  @media (max-width:860px){
+    #uiToggle{display:block;}
+    #legend{display:none;}
+    #titleblock{max-width:calc(100vw - 62px);padding:12px 14px 11px;}
+    #titleblock .meta,#titleblock .caveat{display:none;}
+    #controls{width:100vw;padding:12px 14px 14px;}
+    #schedule{display:none;}
+    #clock{bottom:auto;top:auto;left:0;right:0;transform:none;width:100%;justify-content:center;
+      bottom:0;border-left:0;border-right:0;}
+    #controls{bottom:52px;}
+    #scalebar,#hint{display:none;}
+    #north{top:auto;bottom:66px;left:14px;transform:none;width:36px;height:36px;}
+  }
+  @media (prefers-reduced-motion:reduce){#veil .rule i{animation-duration:.01s;}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<div id="veil">
+  <div class="stamp">Trefoil Campus</div>
+  <div class="rule"><i></i></div>
+  <small>building roads · parking · lighting · signs</small>
+</div>
+
+<button id="uiToggle" aria-label="Hide or show panels">✕</button>
+
+<header class="sheet" id="titleblock">
+  <p class="proj">CV3070 · Group 9 · Transportation</p>
+  <h1>Trefoil Campus <em>— site access &amp; circulation</em></h1>
+  <div class="meta">
+    <span>Road 1 · rigid</span><b>Approach + ring road · 220 PQC</b>
+    <span>Road 2 · flexible</span><b>Rotary + 3 spokes · BC/DBM</b>
+    <span>Junctions</span><b>Priority T · 2 roundabouts</b>
+    <span>Parking</span><b>103 cars · 310 two-wheelers · 120 cycles</b>
+  </div>
+  <p class="caveat">Pedestrians first: every crossing is a raised zebra, footpaths continue across parking driveways. Drag the clock to dusk to see the lighting design; vehicles follow the designed keep-left, clockwise movements.</p>
+</header>
+
+<div id="north" class="sheet" style="background:transparent;border:0;box-shadow:none;backdrop-filter:none;">
+  <svg viewBox="0 0 44 44">
+    <circle cx="22" cy="22" r="20" fill="rgba(10,13,18,.72)" stroke="rgba(226,232,240,.18)"/>
+    <path d="M22 5 L26.5 22 L22 19 L17.5 22 Z" fill="#e0a33c"/>
+    <path d="M22 39 L26.5 22 L22 25 L17.5 22 Z" fill="#4c5563"/>
+    <text x="22" y="15" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#0d1117" font-weight="700">N</text>
+  </svg>
+</div>
+
+<aside class="sheet" id="legend">
+  <span class="cap">Circulation key</span>
+  <div class="row"><span class="sw" style="background:#34373b"></span>Asphalt — rotary, spokes</div>
+  <div class="row"><span class="sw" style="background:#b9bbba"></span>Concrete — approach, ring, J2</div>
+  <div class="row"><span class="sw" style="background:#a85c42"></span>ICBP footpaths</div>
+  <div class="row"><span class="sw" style="background:#96483a"></span>ICBP forecourts (80 mm)</div>
+  <div class="row"><span class="sw" style="background:#9ea2a4"></span>Concrete-paver parking</div>
+  <div class="row"><span class="sw" style="background:#5f7f97"></span>Cycle shed (steel, RCC base)</div>
+  <div class="row"><span class="sw" style="background:#7fa865"></span>Kerbed islands</div>
+  <div class="row"><span class="sw" style="background:#f4f4f0"></span>Markings (IRC:35)</div>
+  <div class="row"><span class="sw" style="background:#2a6fdb"></span>Accessible bays</div>
+  <div class="row"><span class="sw" style="background:#ffd9a0;border-radius:50%"></span>Street lights (glow at night)</div>
+</aside>
+
+<section class="sheet" id="controls">
+  <div class="grp">
+    <span class="cap">Level</span>
+    <div class="seg" id="levelSeg">
+      <button data-l="all" class="on">All</button>
+      <button data-l="0">Ground</button>
+      <button data-l="1">First</button>
+      <button data-l="2">Second</button>
+    </div>
+  </div>
+  <div class="grp">
+    <span class="cap">Block</span>
+    <div class="seg wide" id="blockSeg">
+      <button data-b="all" class="on">Whole site</button>
+      <button data-b="0">Academic</button>
+      <button data-b="1">Research</button>
+      <button data-b="2">Library</button>
+    </div>
+  </div>
+  <div class="grp">
+    <span class="cap">View</span>
+    <div class="seg wide" id="viewSeg">
+      <button data-v="aerial">Aerial</button>
+      <button data-v="rotary">Rotary</button>
+      <button data-v="j2">Entry junctions</button>
+      <button data-v="car">Car park</button>
+      <button data-v="tw">2W park</button>
+      <button data-v="eye">Eye level</button>
+      <button data-v="plan">Plan</button>
+    </div>
+  </div>
+  <div class="grp">
+    <span class="cap">Model</span>
+    <div class="seg wide">
+      <button id="bRoof">Roof on</button>
+      <button id="bExplode">Explode</button>
+      <button id="bOrbit">Auto-orbit</button>
+      <button id="bQuality">Quality: high</button>
+    </div>
+  </div>
+  <div class="grp">
+    <span class="cap">Site</span>
+    <div class="seg wide">
+      <button id="bTraffic" class="on">Traffic moving</button>
+      <button id="bSigns" class="on">Signs shown</button>
+      <button id="bNight">Night view</button>
+    </div>
+  </div>
+</section>
+
+<section class="sheet" id="clock">
+  <div class="t" id="clockT">08:30<small id="clockLabel">Morning</small></div>
+  <input type="range" id="timeSlider" min="500" max="2100" step="5" value="830" aria-label="Time of day">
+</section>
+
+<section class="sheet" id="schedule">
+  <div class="row">Car bays <b id="sCar">—</b></div>
+  <div class="row">Two-wheeler bays <b id="sTw">—</b></div>
+  <div class="row">Cycle stands <b>6 sheds × 20</b></div>
+  <div class="row">Street lights <b id="sLt">—</b></div>
+  <div class="row">Signs <b id="sSg">—</b></div>
+  <div class="row hi">Raised crossings <b id="sX">—</b></div>
+</section>
+
+<div id="scalebar"><span>0</span><div class="bar" id="sbBar"><i></i><i></i><i></i><i></i></div><span id="sbLabel">40 m</span></div>
+<div id="hint">drag orbit · scroll zoom · right-drag pan · pinch on touch</div>
+
+<script>
+/* =====================================================================
+   SITE CIRCULATION GEOMETRY — single source of truth
+   Plan coords in metres: x = east, z = south. Angle θ in degrees,
+   0° = east, 90° = south (clockwise on plan). Site centre = rotary centre.
+   Petals (from the mid-term model): Academic θ=270 (N), Research θ=30,
+   Library θ=150. Spokes sit between petals at θ = 90 (S), 210, 330.
+   ===================================================================== */
+(function(root){
+"use strict";
+const D=Math.PI/180;
+const P=(r,t)=>[r*Math.cos(t*D), r*Math.sin(t*D)];
+/* radial frame: r along u=(cosθ,sinθ), o along t=(-sinθ,cosθ) (+o = clockwise side) */
+const RO=(t,r,o)=>{const c=Math.cos(t*D),s=Math.sin(t*D);return [r*c-o*s, r*s+o*c];};
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1]], sub=(a,b)=>[a[0]-b[0],a[1]-b[1]];
+const mul=(a,k)=>[a[0]*k,a[1]*k], len=a=>Math.hypot(a[0],a[1]);
+const nrm=a=>{const l=len(a)||1;return [a[0]/l,a[1]/l];};
+function arcPts(c,R,a0,a1,n){ n=n||Math.max(3,Math.ceil(Math.abs(a1-a0)/2.5));
+  const o=[]; for(let i=0;i<=n;i++){const a=(a0+(a1-a0)*i/n)*D;o.push([c[0]+R*Math.cos(a),c[1]+R*Math.sin(a)]);} return o; }
+const ang=(c,p)=>Math.atan2(p[1]-c[1],p[0]-c[0])/D;
+function shortArc(c,R,p0,p1,n){ let a0=ang(c,p0),a1=ang(c,p1); let d=a1-a0; while(d>180)d-=360; while(d<-180)d+=360; return arcPts(c,R,a0,a0+d,n||10); }
+function sector(r0,r1,t0,t1){ return arcPts([0,0],r1,t0,t1).concat(arcPts([0,0],r0,t1,t0)); }
+function circle(c,R,n){ n=n||96; const o=[]; for(let i=0;i<n;i++){const a=i/n*2*Math.PI;o.push([c[0]+R*Math.cos(a),c[1]+R*Math.sin(a)]);} return o; }
+function strip(t,r0,r1,o0,o1){ return [RO(t,r0,o0),RO(t,r1,o0),RO(t,r1,o1),RO(t,r0,o1)]; }
+function rect(x0,z0,x1,z1){ return [[x0,z0],[x1,z0],[x1,z1],[x0,z1]]; }
+
+/* ---- fillet: straight edge (point p, dir d, normal n pointing to the land side)
+        against a circle (centre O, radius R); s=+1 fillet circle outside it, -1 inside ---- */
+function filletLC(p,d,n,O,R,s,Rf,hint){
+  const base=add(p,mul(n,Rf)), want=R+s*Rf;
+  const w=sub(base,O); const b=2*(w[0]*d[0]+w[1]*d[1]), c=w[0]*w[0]+w[1]*w[1]-want*want;
+  const disc=b*b-4*c; if(disc<0) return null;
+  const l1=(-b+Math.sqrt(disc))/2, l2=(-b-Math.sqrt(disc))/2;
+  const C1=add(base,mul(d,l1)), C2=add(base,mul(d,l2));
+  const Cf=(len(sub(C1,hint))<len(sub(C2,hint)))?C1:C2;
+  const Tl=sub(Cf,mul(n,Rf));
+  const Tc=add(O,mul(nrm(sub(Cf,O)),R));
+  return {Cf,Tl,Tc,Rf};
+}
+/* circle–circle fillet */
+function filletCC(O1,R1,s1,O2,R2,s2,Rf,hint){
+  const a1=R1+s1*Rf, a2=R2+s2*Rf, dv=sub(O2,O1), dd=len(dv), u=nrm(dv);
+  const a=(a1*a1-a2*a2+dd*dd)/(2*dd), h=Math.sqrt(Math.max(0,a1*a1-a*a));
+  const m=add(O1,mul(u,a)), pn=[-u[1],u[0]];
+  const C1=add(m,mul(pn,h)), C2=sub(m,mul(pn,h));
+  const Cf=(len(sub(C1,hint))<len(sub(C2,hint)))?C1:C2;
+  const T1=add(O1,mul(nrm(sub(Cf,O1)),R1)), T2=add(O2,mul(nrm(sub(Cf,O2)),R2));
+  return {Cf,Tl:T1,Tc:T2,Rf};
+}
+/* road patch between the two tangent points and the true corner X */
+function filletPatch(F,X){ return [F.Tl].concat(shortArc(F.Cf,F.Rf,F.Tl,F.Tc,10)).concat([X]); }
+/* footpath band following a kerb return (land side, towards Cf) */
+function filletBand(F,w){
+  const a=shortArc(F.Cf,F.Rf,F.Tl,F.Tc,10), b=shortArc(F.Cf,Math.max(0.2,F.Rf-w),F.Tl,F.Tc,10).reverse();
+  return a.concat(b);
+}
+
+/* =====================================================================
+   DESIGN CONSTANTS
+   ===================================================================== */
+const K={
+  isl:18, apronR:20, rotIn:20, rotOut:27.5, rotFp:30.5,          // central rotary
+  spokes:[90,210,330], spokeHalf:3.5, spokeFlare:5.25, splitHalf:1.25,
+  ringC:114, ringIn:110.5, ringOut:117.5, fpIn0:108.0, fpOut1:120.0,
+  prom0:58.6, prom1:61.1,                                         // pedestrian promenade ring
+  J2:[0,114], j2R:15, j2Isl:7, j2IslSolid:5,
+  apprHalf:3.5, apprFlare:5.0, apprJ1Half:4.25,
+  mainN:170.5, mainS:178.0, mainFpN:168.0, mainFpS:180.5, mainC:174.25,
+  blocks:[
+    {name:'Academic Block', th:270, Ri:64, Ro:88, L:88, entry:46.5},
+    {name:'Research Block', th:30,  Ri:64, Ro:84, L:82, entry:41},
+    {name:'Library',        th:150, Ri:64, Ro:84, L:50, entry:31.2}
+  ],
+  car:{t0:-18,t1:66, rA:[90,95], aisle:[95,101], rB:[101,106], walks:[10,46]},
+  tw:{t0:95.8, t1:126, ce:[95.8,98.0], cw:[123.8,126.0], rMin:63, rMax:98, walk:111,
+      rows:[[63,65],[68,70],[70,72],[75,77],[77,79],[82,84],[84,86],[89,91],[91,93],[96,98]],
+      aisles:[[65,68],[72,75],[79,82],[86,89],[93,96]]},
+  sheds:[ {id:'CS-1',t:226,r:99},{id:'CS-2',t:196,r:78},{id:'CS-3',t:180,r:99},
+          {id:'CS-4',t:314,r:99},{id:'CS-5',t:346,r:78},{id:'CS-6',t:76,r:76} ],
+  shedL:15, shedD:3.5, cyclesPerShed:20
+};
+/* block plinth extents (matches the model: slab +2.0 m, plinth +1.3 m) */
+K.blocks.forEach(B=>{
+  B.rMid=(B.Ri+B.Ro)/2; B.half=(B.L/B.rMid)/2/D+1.15;
+  B.p0=B.Ri-2.9; B.p1=B.Ro+3.3; B.t0=B.th-B.half; B.t1=B.th+B.half;
+  B.w1=B.p1+2.5; // outer walkway edge
+});
+
+/* =====================================================================
+   BUILD
+   ===================================================================== */
+function build(){
+  const F=[];            // surfaces {k, pts, holes, tag}
+  const M=[];            // marking quads {q:[4 pts], c:'w'|'y'|'b'|'r'}
+  const L=[];            // lights {x,z,h,type,lm,dir}
+  const S=[];            // signs {x,z,face,code,note}
+  const X=[];            // pedestrian crossings {x,z,type,where}
+  const DR=[];           // drainage polylines {pts, type}
+  const PTS=[];          // drainage points {x,z,type}
+  const LAB=[];          // drawing labels
+  const Q={};            // counters for the estimate
+  const surf=(k,pts,tag,holes)=>F.push({k,pts,tag:tag||k,holes:holes||null});
+
+  /* ---------- base lawn ---------- */
+  surf('lawn',circle([0,0],121,144),'site lawn');
+
+  /* ---------- pedestrian network (ICBP, brown) ---------- */
+  surf('icbp',circle([0,0],K.rotFp,120),'rotary footpath',[circle([0,0],K.rotOut-0.05,120)]);
+  surf('icbp',circle([0,0],K.prom1,160),'promenade',[circle([0,0],K.prom0,160)]);
+  surf('icbp',circle([0,0],K.ringIn+0.02,180),'ring inner footpath',[circle([0,0],K.fpIn0,180)]);
+  surf('icbp',circle([0,0],K.fpOut1,180),'ring outer footpath',[circle([0,0],K.ringOut-0.02,180)]);
+  surf('icbp',circle(K.J2,17.8,72),'J2 footway apron');
+
+  /* block walkways + forecourts */
+  K.blocks.forEach((B,i)=>{
+    const e=2.5/((B.p0+B.w1)/2)/D;
+    surf('icbp',sector(B.p1,B.w1,B.t0-e,B.t1+e),'block walkway');
+    surf('icbp',sector(B.prom0||K.prom0,B.p1,B.t0-e,B.t0),'block walkway');
+    surf('icbp',sector(K.prom0,B.p1,B.t1,B.t1+e),'block walkway');
+    surf('icbpH',strip(B.th,K.rotOut+0.2,K.prom0+0.5,-5.5,5.5),'entrance forecourt');
+    surf('bldg',sector(B.p0,B.p1,B.t0,B.t1),B.name);
+  });
+
+  /* ---------- parking (grey concrete pavers) ---------- */
+  const C=K.car;
+  surf('pav80',sector(C.rA[0],C.rB[1],C.t0,C.t1),'car park');
+  [C.t0,C.t1].forEach(t=>surf('pav80',strip(t,C.aisle[0]+0.5,K.ringIn+0.05,-2.25,2.25),'car park connector'));
+  C.walks.forEach(t=>surf('icbp',strip(t,C.rA[0]-0.3,K.fpIn0+0.1,-1,1),'car park walkway'));
+  const T=K.tw;
+  surf('pav60',sector(T.rMin,T.rMax,T.t0,T.t1),'2W park');
+  surf('pav60',strip(90,79,82.5,3.3,8.9),'2W entry');
+  surf('pav60',strip(124.9,T.rMax-1,K.ringIn+0.05,-1.75,1.75),'2W exit');
+  surf('icbp',strip(T.walk,K.prom1-0.1,K.fpIn0+0.1,-1,1),'2W walkway');
+
+  /* cycle sheds + aprons + links */
+  K.sheds.forEach(s=>{
+    const hw=K.shedL/2/s.r/D;
+    surf('icbp',sector(s.r-K.shedD/2-2.2,s.r+K.shedD/2+0.6,s.t-hw-1.2,s.t+hw+1.2),'shed apron');
+    surf('shed',sector(s.r-K.shedD/2,s.r+K.shedD/2,s.t-hw,s.t+hw),s.id);
+    if(s.r>90) surf('icbp',strip(s.t,s.r+K.shedD/2+0.5,K.fpIn0+0.1,-1,1),'shed link');
+    else{
+      const sp=K.spokes.reduce((a,b)=>Math.abs(((b-s.t+540)%360)-180)<Math.abs(((a-s.t+540)%360)-180)?b:a);
+      const sg=((s.t-sp+540)%360-180)>0?1:-1;
+      const t0=sp+sg*(Math.asin(5.9/s.r)/D), t1=s.t-sg*(hw+1.2);
+      surf('icbp',sector(s.r-K.shedD/2-2.2,s.r-K.shedD/2-0.2,Math.min(t0,t1),Math.max(t0,t1)),'shed link');
+    }
+  });
+
+  /* ---------- ROAD 1: rigid (concrete) — ring + J2 + approach ---------- */
+  surf('conc',circle([0,0],K.ringOut,180),'ring road',[circle([0,0],K.ringIn,180)]);
+  surf('conc',circle(K.J2,K.j2R,72),'J2 roundabout');
+  // approach polygon (south of J2 to main road)
+  const ap=[[-5,124],[-5,140],[-3.5,146],[-3.5,148],[-4.25,150],[-4.25,K.mainN],
+            [4.25,K.mainN],[4.25,150],[3.5,148],[3.5,146],[5,140],[5,124]];
+  surf('conc',ap,'approach road');
+  // J2 kerb returns: approach edges vs disc (outside), ring edges vs disc
+  const j2f=[];
+  [-1,1].forEach(sg=>{
+    j2f.push({F:filletLC([sg*5,140],[0,-1],[sg,0],K.J2,K.j2R,1,6,[sg*11,132]),mat:'conc'});
+    j2f.push({F:filletLC([sg*3.5,80],[0,1],[sg,0],K.J2,K.j2R,1,6,[sg*9.5,95]),mat:'asph'});
+    j2f.push({F:filletCC([0,0],K.ringOut,1,K.J2,K.j2R,1,6,[sg*19,122]),mat:'conc'});
+    j2f.push({F:filletCC([0,0],K.ringIn,-1,K.J2,K.j2R,1,6,[sg*18,103]),mat:'conc'});
+  });
+  j2f.forEach(o=>{ if(!o.F) return;
+    const X0=corner(o.F); surf(o.mat,filletPatch(o.F,X0),'J2 kerb return');
+    surf('icbp',filletBand(o.F,2.5),'J2 corner footway'); });
+  function corner(Fl){ // midpoint between tangent points pulled towards road — good enough as patch closure
+    const m=mul(add(Fl.Tl,Fl.Tc),0.5), v=nrm(sub(m,Fl.Cf)); return add(m,mul(v,2.0)); }
+  // J1 kerb returns (line–line, R = 12 m)
+  [-1,1].forEach(sg=>{
+    const Cf=[sg*(4.25+12),K.mainN-12], Fl={Cf,Tl:[sg*4.25,K.mainN-12],Tc:[sg*16.25,K.mainN],Rf:12};
+    surf('conc',filletPatch(Fl,[sg*4.25,K.mainN]),'J1 kerb return');
+    surf('icbp',filletBand(Fl,2.5),'J1 corner footway');
+  });
+  // approach footpaths
+  surf('icbp',rect(4.6,K.ringOut+2,6.6,K.mainN-12),'approach footpath');
+  surf('icbp',rect(-6.6,K.ringOut+2,-4.6,K.mainN-12),'approach footpath');
+
+  /* ---------- existing main road (Semmanchery Road) + junction works ---------- */
+  surf('icbp',rect(-330,K.mainFpN,330,K.mainN),'main road footpath (existing)');
+  surf('icbp',rect(-330,K.mainS,330,K.mainFpS),'main road footpath (existing)');
+  surf('icbp',rect(-78,164.8,-30,K.mainFpN),'bus stop platform');
+  surf('mainasph',rect(-330,K.mainN,330,K.mainS),'Semmanchery Road (existing)');
+  surf('mainasph',[[-72,K.mainN],[-66,K.mainFpN-0.6],[-40,K.mainFpN-0.6],[-34,K.mainN]],'bus lay-by');
+  surf('mainasph',[[-48,K.mainN],[-38,K.mainN-0.75],[-15,K.mainN-0.75],[-5,K.mainN]],'refuge widening N');
+  surf('mainasph',[[-48,K.mainS],[-38,K.mainS+0.75],[-15,K.mainS+0.75],[-5,K.mainS]],'refuge widening S');
+  surf('island',[[-35,K.mainC-0.2],[-31,K.mainC-0.85],[-22,K.mainC-0.85],[-18,K.mainC-0.2],[-18,K.mainC+0.2],[-22,K.mainC+0.85],[-31,K.mainC+0.85],[-35,K.mainC+0.2]],'pedestrian refuge');
+  surf('island',[[-0.3,151],[0.75,152.5],[0.75,167],[0.3,168.2],[-0.3,168.2],[-0.75,167],[-0.75,152.5],[0.3,151]],'J1 channelising island');
+
+  /* ---------- ROAD 2: flexible (asphalt) — rotary + spokes ---------- */
+  surf('asph',circle([0,0],K.rotOut,120),'central rotary',[circle([0,0],K.rotIn,120)]);
+  K.spokes.forEach(th=>{
+    const isS=(th===90);
+    // edge profile in (r,o) for +o side (inbound, lay-by) and -o side
+    const plus=[[36,K.spokeFlare],[42,K.spokeHalf],[45,6.5],[55,6.5],[58,K.spokeHalf]];
+    const minus=[[36,-K.spokeFlare],[42,-K.spokeHalf]];
+    if(isS){ plus.push([82,K.spokeHalf],[88,5]); minus.push([82,-K.spokeHalf],[88,-5]); }
+    // rotary end fillets (outside the rotary circle)
+    const u=P(1,th), tv=[-u[1],u[0]];
+    const fr=[1,-1].map(sg=>filletLC(RO(th,60,sg*K.spokeFlare),mul(u,-1),mul(tv,sg),[0,0],K.rotOut,1,6,RO(th,31.5,sg*11)));
+    // far end fillets
+    let fe;
+    if(isS) fe=[1,-1].map(sg=>filletLC(RO(th,60,sg*5),u,mul(tv,sg),K.J2,K.j2R,1,6,RO(th,96,sg*11)));
+    else    fe=[1,-1].map(sg=>filletLC(RO(th,60,sg*K.spokeHalf),u,mul(tv,sg),[0,0],K.ringIn,-1,9,RO(th,101,sg*12.5)));
+    const pts=[];
+    pts.push(RO(th,22,8));
+    shortArc(fr[0].Cf,6,fr[0].Tc,fr[0].Tl,8).forEach(p=>pts.push(p));
+    plus.forEach(q=>pts.push(RO(th,q[0],q[1])));
+    pts.push(fe[0].Tl);
+    shortArc(fe[0].Cf,fe[0].Rf,fe[0].Tl,fe[0].Tc,8).forEach(p=>pts.push(p));
+    const O2=isS?K.J2:[0,0], R2=isS?K.j2R:K.ringIn;
+    shortArc(O2,R2,fe[0].Tc,fe[1].Tc,8).forEach(p=>pts.push(p));
+    shortArc(fe[1].Cf,fe[1].Rf,fe[1].Tc,fe[1].Tl,8).forEach(p=>pts.push(p));
+    minus.slice().reverse().forEach(q=>pts.push(RO(th,q[0],q[1])));
+    shortArc(fr[1].Cf,6,fr[1].Tl,fr[1].Tc,8).forEach(p=>pts.push(p));
+    pts.push(RO(th,22,-8));
+    surf('asph',pts,isS?'south spoke':'spoke '+th+'°');
+    // footpaths following the kerb
+    const fpP=[[fr[0].Tl],[36,K.spokeFlare],[42,K.spokeHalf],[44,6.5],[56,6.5],[58,K.spokeHalf]];
+    const tl0=rOf(th,fr[0].Tl), tlE=rOf(th,fe[0].Tl);
+    const chainP=[[tl0,K.spokeFlare],[36,K.spokeFlare],[42,K.spokeHalf],[45,6.5],[55,6.5],[58,K.spokeHalf]];
+    if(isS) chainP.push([82,K.spokeHalf],[88,5]);
+    chainP.push([rOf(th,fe[0].Tl),isS?5:K.spokeHalf]);
+    const chainM=[[rOf(th,fr[1].Tl),-K.spokeFlare],[36,-K.spokeFlare],[42,-K.spokeHalf]];
+    if(isS) chainM.push([82,-K.spokeHalf],[88,-5]);
+    chainM.push([rOf(th,fe[1].Tl),isS?-5:-K.spokeHalf]);
+    surf('icbp',band(th,chainP,2.5),'spoke footpath');
+    surf('icbp',band(th,chainM,-2.5),'spoke footpath');
+    [fr[0],fr[1],fe[0],fe[1]].forEach(Fl=>surf('icbp',filletBand(Fl,2.5),'corner footway'));
+    // splitter island (raised, kerbed)
+    surf('island',[RO(th,28.6,0),RO(th,29.8,K.splitHalf),RO(th,36,K.splitHalf),RO(th,40.5,0),RO(th,36,-K.splitHalf),RO(th,29.8,-K.splitHalf)],'splitter island');
+    if(isS) surf('island',[RO(th,99.2,0),RO(th,98,1),RO(th,89.5,1),RO(th,86.5,0),RO(th,89.5,-1),RO(th,98,-1)],'J2 splitter');
+    Q['spoke'+th]={fr,fe};
+  });
+  surf('island',[[0,124.5],[1,126],[1,137],[0,140],[-1,137],[-1,126]],'J2 approach splitter');
+  function rOf(th,p){ const u=P(1,th); return p[0]*u[0]+p[1]*u[1]; }
+  function band(th,chain,w){ const a=chain.map(q=>RO(th,q[0],q[1])), b=chain.slice().reverse().map(q=>RO(th,q[0],q[1]+w)); return a.concat(b); }
+
+  /* ---------- islands ---------- */
+  surf('apron',circle([0,0],K.apronR,120),'rotary truck apron',[circle([0,0],K.isl,120)]);
+  surf('island',circle([0,0],K.isl,120),'rotary central island');
+  surf('apron',circle(K.J2,K.j2Isl,48),'J2 mountable apron',[circle(K.J2,K.j2IslSolid,48)]);
+  surf('island',circle(K.J2,K.j2IslSolid,48),'J2 central island');
+
+  /* =====================================================================
+     MARKINGS  (IRC:35-2015)
+     ===================================================================== */
+  const W='w',Y='y',Bl='b';
+  const quad=(a,b,w,c)=>{ const d=nrm(sub(b,a)), n=[-d[1]*w/2,d[0]*w/2]; M.push({q:[add(a,n),add(b,n),sub(b,n),sub(a,n)],c}); };
+  function polyline(pts,w,c,on,off){ // dashed if on/off given
+    if(!on){ for(let i=0;i<pts.length-1;i++) quad(pts[i],pts[i+1],w,c); return; }
+    let acc=0, draw=true, cur=[pts[0]]; let rem=on;
+    for(let i=0;i<pts.length-1;i++){
+      let a=pts[i], b=pts[i+1], seg=len(sub(b,a));
+      while(seg>1e-6){
+        const step=Math.min(seg,rem); const p=add(a,mul(nrm(sub(b,a)),step));
+        if(draw) quad(a,p,w,c);
+        a=p; seg-=step; rem-=step;
+        if(rem<=1e-6){ draw=!draw; rem=draw?on:off; }
+      }
+    }
+  }
+  const arcLine=(r,t0,t1)=>arcPts([0,0],r,t0,t1,Math.max(4,Math.ceil(Math.abs(t1-t0)*r*D/3)));
+  function zebra(c,d,roadW,cw){ // stripes parallel to traffic, 0.5 on / 0.5 off
+    const dd=nrm(d), n=[-dd[1],dd[0]];
+    for(let s=-roadW/2+0.25;s<roadW/2-0.2;s+=1.0){
+      const a=add(add(c,mul(n,s)),mul(dd,-cw/2)), b=add(add(c,mul(n,s)),mul(dd,cw/2));
+      quad(a,b,0.5,W);
+    }
+  }
+  function arrow(p,d,c){ // straight arrow 5 m, head 1.2
+    const dd=nrm(d), n=[-dd[1],dd[0]];
+    const A=(s,o)=>add(add(p,mul(dd,s)),mul(n,o));
+    M.push({q:[A(-2.5,-0.08),A(1.6,-0.08),A(1.6,0.08),A(-2.5,0.08)],c:c||W});
+    M.push({q:[A(1.1,-0.45),A(2.5,0),A(2.5,0),A(1.1,0.45)],c:c||W});
+  }
+  function tableTri(c,d,roadW){ // speed-table ramp triangles
+    const dd=nrm(d), n=[-dd[1],dd[0]];
+    for(let s=-roadW/2+0.9;s<roadW/2-0.5;s+=1.4){
+      const b=add(c,mul(n,s)); M.push({q:[add(b,mul(n,-0.4)),add(b,mul(dd,0.9)),add(b,mul(dd,0.9)),add(b,mul(n,0.4))],c:W});
+    }
+  }
+  function crossing(c,d,roadW,where,raised){
+    zebra(c,d,roadW,3.0);
+    if(raised){ const dd=nrm(d); tableTri(add(c,mul(dd,-2.6)),d,roadW); tableTri(add(c,mul(dd,2.6)),mul(d,-1),roadW); }
+    X.push({x:c[0],z:c[1],where,raised:!!raised,len:roadW});
+  }
+
+  /* ring road: centre line (broken 3.0/4.5), edge lines, continuous within 25 m of junctions */
+  const jun=[210,330]; const nearJ=t=>jun.some(j=>Math.abs(((t-j+540)%360)-180)<14)||Math.abs(t-90)<22;
+  for(let t=-180;t<180;t+=1){
+    const tt=(t+360)%360;
+    if(Math.abs(tt-90)<8.2) continue; // inside J2
+    const seg=arcLine(K.ringC,t,t+1);
+    if(nearJ(tt)) polyline(seg,0.10,W); // continuous barrier line near junctions
+  }
+  // broken centre line elsewhere
+  [[112,198],[222,318],[342,428]].forEach(r=>polyline(arcLine(K.ringC,r[0],r[1]),0.10,W,3.0,4.5));
+  // edge lines (continuous 100 mm)
+  [[98.5,441.5]].forEach(r=>{ polyline(arcLine(K.ringIn+0.25,r[0],r[1]),0.10,W); polyline(arcLine(K.ringOut-0.25,r[0],r[1]),0.10,W); });
+
+  /* rotary: lane line (broken), edge lines, give-way at entries, cat-eyes implied */
+  polyline(arcLine((K.rotIn+K.rotOut)/2,0,360),0.10,W,1.5,3.0);
+  polyline(arcLine(K.rotIn+0.25,0,360),0.10,W);
+  K.spokes.forEach(th=>{
+    const u=P(1,th), tv=[-u[1],u[0]];
+    // give-way (double broken) across entry lane (+o)
+    [28.4,28.8].forEach(r=>polyline([RO(th,r,K.splitHalf+0.1),RO(th,r,K.spokeFlare-0.2)],0.20,W,0.6,0.3));
+    // centre / lane lines: continuous barrier line from splitter to promenade, broken beyond
+    polyline([RO(th,40.5,0),RO(th,70,0)],0.10,W);
+    polyline([RO(th,70,0),RO(th,th===90?86:100,0)],0.10,W,3.0,4.5);
+    polyline([RO(th,th===90?86:100,0),RO(th,th===90?86.5:106,0)],0.10,W);
+    // arrows (inbound on +o lane, outbound on -o lane)
+    arrow(RO(th,48,1.75),mul(u,-1)); arrow(RO(th,82,1.75),mul(u,-1));
+    arrow(RO(th,48,-1.75),u); arrow(RO(th,78,-1.75),u);
+    // crossings: rotary (raised, refuge), promenade (raised)
+    crossing(RO(th,33.5,0),u,2*K.spokeFlare,'rotary arm '+th+'°',true);
+    crossing(RO(th,59.85,0),u,2*K.spokeHalf,'promenade × spoke '+th+'°',true);
+    if(th!==90){
+      crossing(RO(th,98,0),u,2*K.spokeHalf,'ring mouth × spoke '+th+'°',true);
+      // give way at ring (outbound lane, -o)
+      [109.3,109.7].forEach(r=>polyline([RO(th,r,-0.15),RO(th,r,-3.3)],0.20,W,0.6,0.3));
+    }else{
+      crossing(RO(th,91,0),u,10,'J2 north arm',true);
+      [99.0,99.4].forEach(r=>polyline([RO(th,r,-1.1),RO(th,r,-4.8)],0.20,W,0.6,0.3));
+    }
+    // yellow kerb (no parking) along rotary approach 36–58 on -o side
+    polyline([RO(th,36,-K.spokeFlare+0.1),RO(th,42,-K.spokeHalf+0.1),RO(th,58,-K.spokeHalf+0.1)],0.10,Y);
+    // lay-by bay marking
+    polyline([RO(th,44.2,K.spokeHalf+0.05),RO(th,55.8,K.spokeHalf+0.05)],0.10,W,1.0,1.0);
+  });
+  // yellow kerb line around rotary outer edge
+  polyline(arcLine(K.rotOut-0.2,0,360),0.10,Y,2.0,1.0);
+
+  /* J2 compact roundabout */
+  polyline(arcPts(K.J2,K.j2Isl+0.3,0,360,48),0.10,W);
+  crossing([0,136.5],[0,1],10,'J2 south arm (approach)',true);
+  [-1,1].forEach(sg=>{
+    const t=90-sg*11.4, u=P(1,t), tv=[-u[1],u[0]];
+    crossing(P(K.ringC,t),tv,7,'J2 '+(sg>0?'east':'west')+' ring arm',true);
+    // hatched ghost splitter on ring arm
+    for(let k=0;k<5;k++){ const a=90-sg*(8.6+k*0.55); quad(RO(a,K.ringC,-0.6),RO(a+sg*0.35,K.ringC,0.6),0.25,W); }
+  });
+  // give way lines at J2 entries (approach inbound lane, west ring arm inner lane, east ring arm outer lane)
+  [130.0,130.4].forEach(z=>polyline([[-1.1,z],[-4.8,z]],0.20,W,0.6,0.3));
+  [-1,1].forEach(sg=>{ const t=90-sg*8.6; const o=sg>0?[117.2,114.2]:[110.8,113.8];
+    [0,0.4].forEach(dt=>polyline([P(o[0],t-sg*dt),P(o[1],t-sg*dt)],0.20,W,0.6,0.3)); });
+
+  /* approach road + J1 */
+  polyline([[0,141],[0,150.5]],0.10,W);
+  arrow([-1.9,158],[0,-1]); arrow([2.5,146],[0,1]);
+  crossing([0,162],[0,1],8.5,'J1 approach mouth',true);
+  quad([0.8,169.3],[4.2,169.3],0.30,W);           // STOP line (outbound)
+  quad([0.8,169.3],[0.8,169.3],0.30,W);
+  // main road
+  polyline([[-330,K.mainC],[-50,K.mainC]],0.10,W,3.0,4.5);
+  polyline([[-50,K.mainC],[25,K.mainC]],0.10,W);      // no-overtaking at junction + crossing
+  polyline([[25,K.mainC],[330,K.mainC]],0.10,W,3.0,4.5);
+  polyline([[-330,K.mainN+0.25],[-72,K.mainN+0.25]],0.15,W); polyline([[-34,K.mainN+0.25],[-17,K.mainN+0.25]],0.15,W);
+  polyline([[17,K.mainN+0.25],[330,K.mainN+0.25]],0.15,W);
+  polyline([[-330,K.mainS-0.25],[330,K.mainS-0.25]],0.15,W);
+  crossing([-26.5,K.mainC],[1,0],9,'Semmanchery Road (with refuge)',false);
+  polyline([[-72,K.mainN-0.1],[-34,K.mainN-0.1]],0.15,Y,1.0,1.0);  // bus bay line
+  for(let x=-64;x<-42;x+=3.2) quad([x,K.mainFpN],[x+1.8,K.mainN-0.2],0.18,Y); // bus bay hatch
+
+  /* ---------- parking markings ---------- */
+  const stalls={car:0,acc:0,tw:0}; Q.stallPts=[];
+  function stallRow(r0,r1,t0,t1,wd,c,skip,accN){
+    const rm=(r0+r1)/2, dth=wd/rm/D; let t=t0; let n=0;
+    while(t+dth<=t1+1e-6){
+      const mid=t+dth/2;
+      if(skip.some(s=>Math.abs(mid-s[0])<s[1])){ t+=dth; continue; }
+      if(accN&&n<accN){ // accessible bay 3.6 m
+        const da=3.6/rm/D; M.push({q:[P(r0+0.1,t),P(r1-0.1,t),P(r1-0.1,t+da),P(r0+0.1,t+da)],c:Bl});
+        polyline([P(r0,t),P(r1,t)],0.1,W); Q.stallPts.push({p:P((r0+r1)/2,t+da/2),th:t+da/2,type:'acc'}); t+=da; n++; stalls.acc++; continue;
+      }
+      polyline([P(r0,t),P(r1,t)],wd>1.5?0.10:0.075,c); Q.stallPts.push({p:P((r0+r1)/2,mid),th:mid,type:wd>1.5?'car':'tw'}); t+=dth; n++;
+      if(wd>1.5) stalls.car++; else stalls.tw++;
+    }
+    polyline([P(r0,t),P(r1,t)],wd>1.5?0.10:0.075,c);
+  }
+  const wk=C.walks.map(t=>[t,1.6]);
+  stallRow(C.rA[0],C.rA[1],C.t0+1.5,C.t1-1.5,2.5,W,wk,2);
+  stallRow(C.rB[0],C.rB[1],C.t0+3.4,C.t1-3.4,2.5,W,wk,0);
+  polyline(arcLine(98,C.t1-2,C.t0+2),0.10,W,1.0,5.0);     // aisle centre guide (slot drain line in drawing)
+  arrow(P(98,50),[-Math.sin(50*D)*-1,Math.cos(50*D)*-1]); arrow(P(98,20),[Math.sin(20*D),-Math.cos(20*D)]);
+  C.walks.forEach(t=>{ const u=P(1,t),tv=[-u[1],u[0]]; crossing(P(98,t),u,6,'car park aisle walkway',false); });
+  T.rows.forEach(rw=>stallRow(rw[0],rw[1],T.ce[1]+0.2,T.cw[0]-0.2,1.0,W,[[T.walk,1.5]],0));
+  T.aisles.forEach(a=>{ const rm=(a[0]+a[1])/2; const tv=t=>[-Math.sin(t*D),Math.cos(t*D)]; arrow(P(rm,104),tv(104)); arrow(P(rm,118),tv(118)); });
+
+  /* forecourt accessible bays */
+  K.blocks.forEach(B=>{
+    [[40,43.6],[43.6,47.2]].forEach(rr=>{ M.push({q:[RO(B.th,rr[0]+0.1,-5.4),RO(B.th,rr[1]-0.1,-5.4),RO(B.th,rr[1]-0.1,-0.6),RO(B.th,rr[0]+0.1,-0.6)],c:Bl}); stalls.acc++; });
+    polyline([RO(B.th,31.0,-5.3),RO(B.th,31.0,5.3)],0.12,Y,0.25,1.2);   // bollard line
+  });
+  Q.stalls=stalls;
+
+  /* =====================================================================
+     LIGHTING  (IS 1944 classes; lumen method in report)
+     ===================================================================== */
+  const Lp=(p,h,type,lm,dir)=>L.push({x:p[0],z:p[1],h,type,lm,dir});
+  for(let k=0;k<12;k++){ const t=15+30*k; Lp(P(120.4,t),8,'road',7800,-1); }
+  for(let k=0;k<12;k++){ const t=30*k; if(t===90||t===210||t===330) continue; Lp(P(107.6,t),8,'road',7800,1); }
+  [210,330].forEach(t=>Lp(P(120.4,t),10,'junction',12000,-1));
+  for(let k=0;k<6;k++) Lp(P(16.5,60*k+30),10,'junction',12000,1);
+  [45,135,225,315].forEach(a=>Lp(add(K.J2,[18.8*Math.cos(a*D),18.8*Math.sin(a*D)]),10,'junction',12000,0));
+  K.spokes.forEach(th=>{
+    [[50,9.3],[78,6.3]].forEach(q=>Lp(RO(th,q[0],q[1]),8,'road',7800,0));
+    [[40,-6.3],[64,-6.3],[90,-6.3]].forEach(q=>{ if(th===90&&q[0]===90) return; Lp(RO(th,q[0],q[1]),8,'road',7800,0); });
+  });
+  Lp([7.0,152],8,'road',7800,0); Lp([-7.0,142],8,'road',7800,0);
+  Lp([12.5,164.5],10,'junction',12000,0); Lp([-12.5,164.5],10,'junction',12000,0);
+  Lp([-26.5,181.2],10,'junction',12000,0);
+  [-12,8,28,48].forEach(t=>Lp(P(89.6,t),8,'parking',7800,0));
+  [-2,18,38,58].forEach(t=>Lp(P(107.1,t),8,'parking',7800,0));
+  [[97,70],[97,88],[125,67],[125,85],[111,78],[111,94]].forEach(q=>Lp(P(q[1],q[0]),8,'parking',7800,0));
+  // pedestrian lanterns: promenade, forecourts, block outer walkways
+  for(let t=0;t<360;t+=12){ if(K.spokes.some(s=>Math.abs(((t-s+540)%360)-180)<7)) continue; Lp(P(K.prom1+0.4,t+6),4,'pedestrian',3000,0); }
+  K.blocks.forEach(B=>{
+    [38,50].forEach(r=>[-6.1,6.1].forEach(o=>Lp(RO(B.th,r,o),4,'pedestrian',3000,0)));
+    const rr=B.w1+0.35, n=Math.max(2,Math.round((B.t1-B.t0)*rr*D/20));
+    for(let i=0;i<=n;i++) Lp(P(rr,B.t0+(B.t1-B.t0)*i/n),4,'pedestrian',3000,0);
+  });
+
+  /* =====================================================================
+     SIGNS  (IRC:67-2022)  face = plan bearing the sign front points to
+     ===================================================================== */
+  const Sg=(p,face,code,note)=>S.push({x:p[0],z:p[1],face,code,note});
+  const brg=v=>Math.atan2(v[1],v[0])/D;
+  // main road
+  Sg([-78,167.4],180,'PED_AHEAD','Eastbound, 50 m before zebra');
+  Sg([-56,167.4],180,'SIDE_LEFT','Eastbound, T-junction ahead');
+  Sg([56,181.1],0,'SIDE_RIGHT','Westbound, T-junction ahead');
+  Sg([32,181.1],0,'PED_AHEAD','Westbound, before zebra');
+  Sg([-29.5,167.4],180,'PED_X','At zebra, eastbound');
+  Sg([-23.5,181.1],0,'PED_X','At zebra, westbound');
+  Sg([-34.6,K.mainC],180,'KEEP_LEFT','Refuge nose (E-bound)');
+  Sg([-18.4,K.mainC],0,'KEEP_LEFT','Refuge nose (W-bound)');
+  Sg([-52,165.4],180,'BUS','Bus stop at lay-by');
+  Sg([-120,167.4],180,'DIR','Advance direction — campus entry');
+  Sg([120,181.1],0,'DIR','Advance direction — campus entry');
+  // approach
+  Sg([5.6,168.6],-90,'STOP','Approach exit, stop line');
+  Sg([5.6,159.8],-90,'PED_X','Approach zebra (outbound)');
+  Sg([-5.6,164.2],90,'PED_X','Approach zebra (inbound)');
+  Sg([0,151.4],-90,'KEEP_LEFT','Channelising island nose');
+  Sg([0,167.8],90,'KEEP_LEFT','Channelising island nose');
+  Sg([-5.6,156],90,'SPEED20','Campus speed limit');
+  Sg([-5.6,152.5],90,'NO_HORN','Academic silence zone');
+  Sg([-5.6,146.5],90,'RBT_AHEAD','Roundabout ahead (J2)');
+  Sg([-6.8,142.5],90,'DIR','Map-type direction sign at J2');
+  Sg([-5.8,139.3],90,'PED_X','J2 approach zebra');
+  Sg([-5.8,130.6],90,'GIVE_WAY','J2 entry');
+  Sg([5.8,133.6],-90,'PED_X','J2 approach zebra (outbound)');
+  // J2 ring arms
+  Sg(P(119.0,68),brg([-Math.sin(68*D),Math.cos(68*D)])+180,'RBT_AHEAD','Ring E arm → J2');
+  Sg(P(119.0,77.5),brg([-Math.sin(77.5*D),Math.cos(77.5*D)])+180,'PED_X','J2 E arm zebra');
+  Sg(P(119.0,81.8),brg([-Math.sin(81.8*D),Math.cos(81.8*D)])+180,'GIVE_WAY','J2 E arm entry');
+  Sg(P(109.2,112),brg([-Math.sin(112*D),Math.cos(112*D)]),'RBT_AHEAD','Ring W arm → J2');
+  Sg(P(109.2,102.5),brg([-Math.sin(102.5*D),Math.cos(102.5*D)]),'PED_X','J2 W arm zebra');
+  Sg(P(109.2,98.2),brg([-Math.sin(98.2*D),Math.cos(98.2*D)]),'GIVE_WAY','J2 W arm entry');
+  Sg(RO(90,76,-6.4),-90,'RBT_AHEAD','South spoke outbound → J2');
+  Sg(RO(90,88.4,-6.4),-90,'PED_X','J2 N arm zebra');
+  Sg(RO(90,98.4,-5.6),-90,'GIVE_WAY','J2 N arm entry');
+  [0,90,180,270].forEach(a=>Sg(add(K.J2,[5.2*Math.cos(a*D),5.2*Math.sin(a*D)]),a,'CHEVRON','J2 island chevron'));
+  // spokes / rotary
+  K.spokes.forEach(th=>{
+    const inb=th+180, outb=th;
+    Sg(RO(th,72,6.4),th,'HUMP','Raised crossing ahead (inbound)');
+    Sg(RO(th,62.2,6.4),th,'PED_X','Promenade zebra (inbound)');
+    Sg(RO(th,57.6,-6.4),th+180,'PED_X','Promenade zebra (outbound)');
+    Sg(RO(th,52,9.6),th,'RBT_AHEAD','Rotary ahead');
+    Sg(RO(th,45,9.6),th,'DIR','Map-type direction sign');
+    Sg(RO(th,36,6.0),th,'PED_X','Rotary arm zebra');
+    Sg(RO(th,29.4,5.9),th,'GIVE_WAY','Rotary entry');
+    Sg(RO(th,40.3,0),th,'KEEP_LEFT','Splitter nose');
+    Sg(P(19.2,th),th,'CHEVRON','Central island chevron facing entry');
+    Sg(RO(th,44,-6.4),th+180,'HUMP','Raised crossing ahead (outbound)');
+    if(th!==90){
+      Sg(RO(th,100.2,-6.4),th+180,'PED_X','Ring-mouth zebra (outbound)');
+      Sg(RO(th,108.6,-6.2),th+180,'GIVE_WAY','Spoke meets ring road');
+      Sg(RO(th,95.6,6.4),th,'PED_X','Ring-mouth zebra (inbound)');
+      Sg(RO(th,104,6.4),th,'SPEED20','Speed limit on entering spoke');
+      // ring approaches to the T
+      Sg(P(119.0,th-20),brg([-Math.sin((th-20)*D),Math.cos((th-20)*D)])+180,'SIDE_LEFT','Ring (clockwise) — side road');
+      Sg(P(109.2,th+20),brg([-Math.sin((th+20)*D),Math.cos((th+20)*D)]),'SIDE_LEFT','Ring (anticlockwise) — side road');
+    }
+  });
+  // parking
+  Sg(P(109.2,78),brg([-Math.sin(78*D),Math.cos(78*D)]),'P','Car park advance (left 25 m)');
+  Sg(P(109.0,69.2),brg([-Math.sin(69.2*D),Math.cos(69.2*D)]),'P','Car park entry');
+  Sg(P(102,63.5),245,'SPEED10','Car park speed limit');
+  Sg(P(108.7,-20.9),-18,'NO_ENTRY','Car park exit (one-way)');
+  Sg(P(103,-20.6),162,'STOP','Car park exit onto ring');
+  Sg(RO(90,86,6.4),90,'P2W','2W park advance');
+  Sg(RO(90,83.2,9.4),90,'P2W','2W park entry');
+  Sg(P(108.7,127.5),125,'NO_ENTRY','2W exit (one-way)');
+  Sg(P(100,127.2),-55,'STOP','2W exit onto ring');
+  Sg(P(91.5,1.5),200,'ACC','Accessible bays (car park)');
+  K.blocks.forEach(B=>{ Sg(RO(B.th,31.6,6.2),B.th,'PED_ONLY','Forecourt — pedestrians / emergency only'); Sg(RO(B.th,48,-6.1),B.th,'ACC','Accessible bays'); });
+  K.sheds.forEach(s=>Sg(P(s.r-K.shedD/2-2.4,s.t),s.t+180,'CYCLE','Cycle parking '+s.id));
+  for(let k=0;k<3;k++){ Sg(P(K.prom1+1.2,30+120*k+15),0,'WAY','Pedestrian wayfinding totem'); Sg(P(K.prom1+1.2,30+120*k-15),0,'WAY','Pedestrian wayfinding totem'); }
+
+  /* =====================================================================
+     DRAINAGE (layout for the drawing)
+     ===================================================================== */
+  DR.push({type:'trunk',pts:arcLine(119.6,-178,178)});
+  DR.push({type:'outfall',pts:[[-119.6,0],[-205,0]]});
+  K.spokes.forEach(th=>{ DR.push({type:'pipe',pts:[RO(th,27.9,-4.6),RO(th,119.6,-4.6)]}); });
+  for(let k=0;k<6;k++) PTS.push({...o2(P(27.9,60*k)),type:'inlet'});
+  K.spokes.forEach(th=>{ for(let r=40;r<(th===90?95:106);r+=25){ PTS.push({...o2(RO(th,r,th===90&&r>80?5.2:3.7)),type:'inlet'}); PTS.push({...o2(RO(th,r,-3.7)),type:'inlet'}); } });
+  DR.push({type:'slot',pts:arcLine(98,C.t0+2,C.t1-2)});
+  DR.push({type:'pipe',pts:[P(98,C.t0),P(119.6,C.t0)]});
+  T.aisles.forEach(a=>DR.push({type:'slot',pts:arcLine((a[0]+a[1])/2,T.t0+1,T.t1-1)}));
+  DR.push({type:'pipe',pts:[P(98,124.9),P(119.6,124.9)]});
+  [[4.0,150],[4.0,166],[-4.0,150],[-4.0,166]].forEach(p=>PTS.push({x:p[0],z:p[1],type:'inlet'}));
+  DR.push({type:'pipe',pts:[[4,150],[4,166],[4,169.5]]}); DR.push({type:'pipe',pts:[[-4,150],[-4,166],[-4,169.5]]});
+  for(let k=0;k<12;k++) PTS.push({...o2(P(121.6,15+30*k+180)),type:'rwh'});
+  for(let t=0;t<360;t+=8){ if(Math.abs(t-90)<9) continue; PTS.push({...o2(P(117.3,t)),type:'inlet'}); }
+  function o2(p){return {x:p[0],z:p[1]};}
+
+  /* ---------- labels ---------- */
+  K.blocks.forEach(B=>LAB.push({p:P(B.rMid,B.th),t:B.name.toUpperCase(),s:3.6,rot:B.th+90}));
+  LAB.push({p:[0,6],t:'CENTRAL ROTARY',s:2.4});
+  LAB.push({p:P(98,24),t:'CAR PARK',s:3.2,rot:24+90});
+  LAB.push({p:P(81,111),t:'2W PARK',s:3.0,rot:111+90});
+  LAB.push({p:[0,190],t:'SEMMANCHERY ROAD (EXISTING)',s:3.0});
+  LAB.push({p:[15,146],t:'APPROACH ROAD',s:2.4,rot:-90});
+  LAB.push({p:P(113.9,160),t:'RING ROAD (RIGID)',s:2.2,rot:160+90});
+  K.sheds.forEach(s=>LAB.push({p:P(s.r,s.t),t:s.id,s:1.5,rot:s.t+90}));
+
+  return {K,F,M,L,S,X,DR,PTS,LAB,Q,helpers:{P,RO,arcPts,circle}};
+}
+
+const api={build,K,P,RO};
+if(typeof module!=='undefined'&&module.exports) module.exports=api; else root.SITEGEO=api;
+})(this);
+
+</script>
+<script>
+"use strict";
+if(typeof THREE==='undefined'){
+  document.getElementById('veil').innerHTML=
+    '<div class="stamp" style="color:#e0a33c">3D library did not load</div>'+
+    '<small style="color:#8b95a4">This model needs an internet connection the first time it opens.</small>';
+  throw new Error('three.js unavailable');
+}
+/* =====================================================================
+   TREFOIL CAMPUS — architectural model
+   Three petals @ 120°, each a curved G+2 block embracing a central court.
+   Block A is the detailed academic plan: 24 classrooms × 60 seats.
+   ===================================================================== */
+
+const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const D2R=Math.PI/180;
+const TAU=Math.PI*2;
+
+/* ---- geometry of the site --------------------------------------- */
+const BLK={ Ri:64, Ro:88, fh:3.6, levels:3, plinth:0.8 };
+BLK.rMid=(BLK.Ri+BLK.Ro)/2;
+BLK.top=BLK.plinth+BLK.levels*BLK.fh;
+
+const SITE={ plazaR:33, ringR:114, lawnR:57, lawnC:73 };
+const BASE=[-Math.PI/2, -Math.PI/2+TAU/3, -Math.PI/2+2*TAU/3];
+
+/* =====================================================================
+   BUILDING PLANS — the same room geometry as the 2D drawing set.
+   Rooms are annular sectors: s = arc length on the block centre line,
+   r = radius from the site centre.
+   ===================================================================== */
+const RM=(t,s,r)=>({t:t,s:s,r:r});
+
+function academicPlan(){
+  const A1=[66.25,74.75], CO=[74.75,77.25], B1=[77.25,85.75];
+  const bays=[[5,16],[16,27],[27,38],[55,66],[66,77],[77,88]];
+  const cw=[38,41.5], atr=[41.5,51.5], ce=[51.5,55];
+  const core=z=>[RM('core',z,[66.25,70.75]),RM('core',z,[70.75,80.75]),RM('core',z,[80.75,85.75])];
+  const lv=[[],[],[]];
+  for(let f=0;f<3;f++){
+    const X=lv[f];
+    X.push(RM('veranda',[0,88],[64,66.25]),RM('veranda',[0,88],[85.75,88]));
+    X.push(RM('toilet',[0,5],B1),RM('toilet',[0,5],A1));
+    bays.slice(0,3).forEach(b=>{ X.push(RM('classroom',b,A1),RM('classroom',b,B1)); });
+    X.push(RM('corr',[0,38],CO));
+    X.push.apply(X,core(cw)); X.push.apply(X,core(ce));
+    if(f===0){
+      bays.slice(3).forEach(b=>{ X.push(RM('classroom',b,A1),RM('classroom',b,B1)); });
+      X.push(RM('corr',[55,88],CO));
+      X.push(RM('lobby',atr,[66.25,71.75]),RM('lobby',atr,[80.25,85.75]));
+      X.push(RM('atrium',atr,[71.75,80.25]));
+    }else{
+      X.push(RM('atrium',atr,[71.75,80.25]));
+      X.push(RM('corr',atr,[66.25,71.75]),RM('corr',atr,[80.25,85.75]));
+      X.push(RM('collab',[55,59.5],[66.25,85.75]),RM('collab',[83.5,88],[66.25,85.75]));
+      [[66.25,69.65],[71.35,74.75],[77.25,80.65],[82.35,85.75]].forEach(rr=>{
+        for(let i=0;i<4;i++) X.push(RM('cabin',[59.5+i*6,65.5+i*6],rr));
+      });
+      X.push(RM('corr',[59.5,83.5],[69.65,71.35]),RM('corr',[59.5,83.5],[80.65,82.35]));
+      X.push(RM('corr',[59.5,83.5],CO));
+    }
+  }
+  return {name:'ACADEMIC BLOCK', sub:'24 classrooms · 32 faculty cabins',
+    L:88, Ri:64, Ro:88, faceIn:66.25, faceOut:85.75, veranda:true,
+    atrium:{s:atr,r:[71.75,80.25]}, entry:46.5, rooms:lv};
+}
+
+function researchPlan(){
+  const A1=[64,72.75], CO=[72.75,75.25], B1=[75.25,84];
+  const bays=[[0,15],[15,30],[52,67],[67,82]];
+  const cw=[30,36], atr=[36,46], ce=[46,52];
+  const lv=[[],[],[]];
+  for(let f=0;f<3;f++){
+    const X=lv[f];
+    bays.forEach(b=>X.push(RM('lab',b,B1)));
+    X.push(RM('corr',[0,30],CO),RM('corr',[52,82],CO));
+    X.push(RM('core',cw,[75.25,84]),RM('core',ce,[75.25,84]));
+    X.push(RM('toilet',[36,41],B1),RM('toilet',[41,46],B1));
+    X.push(RM('core',[31,36],[69.5,72]),RM('core',[46,51],[69.5,72]));
+    X.push(RM(f===0?'lobby':'corr',[30,36],[64,69.5]),RM(f===0?'lobby':'corr',[46,52],[64,69.5]));
+    X.push(RM('atrium',atr,[64.5,74.5]));
+    if(f<2){ bays.forEach(b=>X.push(RM('lab',b,A1))); }
+    else{
+      X.push(RM('lab',bays[0],A1),RM('lab',bays[3],A1));
+      X.push(RM('admin',[15,17.3],A1),RM('admin',[17.3,21.9],A1),RM('admin',[21.9,30],A1));
+      X.push(RM('admin',[52,54.3],A1),RM('admin',[54.3,56.6],A1),RM('admin',[56.6,67],A1));
+    }
+    if(f===1){ X.push(RM('step',[21.5,39],[56,64]),RM('step',[43,60.5],[56,64])); }
+  }
+  return {name:'RESEARCH BLOCK', sub:'8 labs per floor · 2 step classrooms',
+    L:82, Ri:64, Ro:84, faceIn:64, faceOut:84, veranda:false,
+    atrium:{s:atr,r:[64.5,74.5]}, entry:41, rooms:lv};
+}
+
+function libraryPlan(){
+  const BI=[64,70], CO=[70,73], BO=[73,84];
+  const lv=[[],[],[]];
+  for(let f=0;f<3;f++){
+    const X=lv[f];
+    X.push(RM('toilet',[0,5.5],[73,78.5]),RM('toilet',[0,5.5],[78.5,84]));
+    X.push(RM('support',[5.5,10],BO));
+    X.push(RM('reading',[10,22.7],BO));
+    X.push(RM('core',[22.7,25.2],[73,84]));
+    X.push(RM('support',[25.2,37.2],[79,84]));
+    X.push(RM('core',[37.2,39.7],[73,84]));
+    X.push(RM('carrel',[39.7,47],BO));
+    X.push(RM('support',[47,50],BO));
+    X.push(RM('corr',[0,22.7],CO),RM('corr',[39.7,50],CO));
+    X.push(RM('stacks',[0,22.7],BI));
+    X.push(RM('core',[22.7,25.2],[64,69]),RM('core',[37.2,39.7],[64,69]));
+    X.push(RM('atrium',[25.2,37.2],[69,79]));
+    X.push(RM(f===0?'lobby':'corr',[25.2,37.2],[64,69]));
+    X.push(RM('stacks',[39.7,47.5],BI));
+    X.push(RM('support',[47.5,50],BI));
+  }
+  return {name:'LIBRARY', sub:'~240 reader seats · G+2',
+    L:50, Ri:64, Ro:84, faceIn:64, faceOut:84, veranda:false,
+    atrium:{s:[25.2,37.2],r:[69,79]}, entry:31.2, rooms:lv};
+}
+
+/* petal 0 = north, 1 = east, 2 = west */
+const PLANS=[academicPlan(), researchPlan(), libraryPlan()];
+
+/* ---- palettes ---------------------------------------------------- */
+const PROG={
+  classroom:0xF3E4C4, cabin:0xDAE3B0, lab:0xCADCEC, step:0xF4CFBA, admin:0xEDE0A8,
+  stacks:0xDCCCE6, reading:0xF5E6C0, carrel:0xF0DCA4, support:0xCADCEC, toilet:0xC0D9E8,
+  core:0xB4BAC1, atrium:0xDCEFF4, lobby:0xEBD0AC, collab:0xDCC6E4,
+  corr:0xF3ECD8, veranda:0xEFEDE3
+};
+
+const SKIN=[
+  { fin:0xb4623a, panel:0xded2bc, base:0x8b8377, soffit:0xf1eee6, glass:0x8fb2bf, roof:0xb9b5ac },
+  { fin:0x6e8071, panel:0xd2d5cd, base:0x83867e, soffit:0xeef0ec, glass:0x93b5b7, roof:0xb2b6ae },
+  { fin:0x9a7a4e, panel:0xe2d6c4, base:0x8d8375, soffit:0xf2eee5, glass:0x9fb0be, roof:0xbcb6aa }
+];
+
+/* =====================================================================
+   helpers
+   ===================================================================== */
+function polar(r,a,y){ return new THREE.Vector3(Math.cos(a)*r, y||0, Math.sin(a)*r); }
+const faceZ=a=>Math.PI/2-a;   // object local +Z points radially outward
+const faceX=a=>-a;            // object local +X points radially outward
+
+/* annular sector solid, y from 0..h (mesh positioned by y0) */
+function arcSolidGeo(ri,ro,a0,a1,h,seg){
+  const s=new THREE.Shape();
+  s.absarc(0,0,ro,a0,a1,false);
+  s.absarc(0,0,ri,a1,a0,true);
+  const g=new THREE.ExtrudeGeometry(s,{depth:h,bevelEnabled:false,steps:1,
+    curveSegments:seg||Math.max(6,Math.round((a1-a0)*46))});
+  g.rotateX(Math.PI/2); g.translate(0,h,0);
+  return g;
+}
+function arcSolid(ri,ro,a0,a1,h,mat,y0,seg){
+  const m=new THREE.Mesh(arcSolidGeo(ri,ro,a0,a1,h,seg),mat);
+  m.position.y=y0||0; m.castShadow=true; m.receiveShadow=true; return m;
+}
+/* curved wall band (open cylinder segment) */
+function curvedWallGeo(r,h,a0,a1,seg){
+  return new THREE.CylinderGeometry(r,r,h,seg||Math.max(8,Math.round((a1-a0)*44)),1,true,
+    Math.PI/2-a1, a1-a0);
+}
+function curvedWall(r,h,a0,a1,mat,yc,seg){
+  const m=new THREE.Mesh(curvedWallGeo(r,h,a0,a1,seg),mat);
+  m.position.y=yc; return m;
+}
+/* parametric surface */
+function paramSurface(f,nu,nv){
+  const pos=[],uv=[],idx=[];
+  for(let i=0;i<=nu;i++)for(let j=0;j<=nv;j++){
+    const p=f(i/nu,j/nv); pos.push(p.x,p.y,p.z); uv.push(i/nu,j/nv);
+  }
+  for(let i=0;i<nu;i++)for(let j=0;j<nv;j++){
+    const A=i*(nv+1)+j,B=A+1,C=A+nv+1,Dd=C+1;
+    idx.push(A,C,B, B,C,Dd);
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+  g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+/* place a geometry (returns a transformed clone) */
+function place(geo,x,y,z,ry){
+  const m=new THREE.Matrix4().makeRotationY(ry||0);
+  m.setPosition(x,y,z);
+  return geo.clone().applyMatrix4(m);
+}
+/* merge geometries, baking a colour per part into a vertex-colour attribute */
+function mergeColored(list){
+  const parts=list.map(o=>{
+    let g=o.geo.index?o.geo.toNonIndexed():o.geo;
+    if(!g.attributes.normal) g.computeVertexNormals();
+    return {g:g,c:new THREE.Color(o.color)};
+  });
+  let total=0; parts.forEach(p=>{ total+=p.g.attributes.position.count; });
+  const pos=new Float32Array(total*3), nor=new Float32Array(total*3), col=new Float32Array(total*3);
+  let off=0;
+  parts.forEach(p=>{
+    const n=p.g.attributes.position.count;
+    pos.set(p.g.attributes.position.array.subarray(0,n*3), off*3);
+    nor.set(p.g.attributes.normal.array.subarray(0,n*3), off*3);
+    for(let i=0;i<n;i++){ col[(off+i)*3]=p.c.r; col[(off+i)*3+1]=p.c.g; col[(off+i)*3+2]=p.c.b; }
+    off+=n;
+  });
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('normal',new THREE.BufferAttribute(nor,3));
+  g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  return g;
+}
+function jitter(geo,amt){
+  /* offset by shared position so faces stay welded (icosahedra are non-indexed) */
+  const p=geo.attributes.position.array, seen=new Map();
+  for(let i=0;i<p.length;i+=3){
+    const k=p[i].toFixed(3)+'|'+p[i+1].toFixed(3)+'|'+p[i+2].toFixed(3);
+    let d=seen.get(k);
+    if(!d){ d=[rnd(-amt,amt),rnd(-amt,amt),rnd(-amt,amt)]; seen.set(k,d); }
+    p[i]+=d[0]; p[i+1]+=d[1]; p[i+2]+=d[2];
+  }
+  geo.attributes.position.needsUpdate=true; geo.computeVertexNormals(); return geo;
+}
+
+/* =====================================================================
+   procedural textures
+   ===================================================================== */
+function cvs(s){ const c=document.createElement('canvas'); c.width=c.height=s; return c; }
+function grain(ctx,s,n,alpha){
+  for(let i=0;i<n;i++){
+    ctx.fillStyle='rgba(0,0,0,'+(Math.random()*alpha).toFixed(3)+')';
+    ctx.fillRect(Math.random()*s,Math.random()*s,1.5,1.5);
+  }
+}
+function tex(canvas,rx,ry,srgb){
+  const t=new THREE.CanvasTexture(canvas);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.repeat.set(rx||1,ry||1);
+  if(srgb!==false) t.encoding=THREE.sRGBEncoding;
+  return t;
+}
+function grassTex(){
+  const S=512,c=cvs(S),x=c.getContext('2d');
+  x.fillStyle='#41613a'; x.fillRect(0,0,S,S);
+  for(let i=0;i<26;i++){
+    const g=x.createRadialGradient(rnd(0,S),rnd(0,S),0,rnd(0,S),rnd(0,S),rnd(60,150));
+    g.addColorStop(0,'rgba(94,126,72,.5)'); g.addColorStop(1,'rgba(94,126,72,0)');
+    x.fillStyle=g; x.fillRect(0,0,S,S);
+  }
+  for(let i=0;i<26000;i++){
+    const v=rnd(-26,30)|0;
+    x.fillStyle='rgba('+(70+v)+','+(104+v)+','+(58+v)+',.55)';
+    x.fillRect(rnd(0,S),rnd(0,S),1.6,1.6);
+  }
+  return tex(c,90,90);
+}
+function paveTex(){
+  const S=512,c=cvs(S),x=c.getContext('2d');
+  x.fillStyle='#cfc6b2'; x.fillRect(0,0,S,S);
+  const u=S/8;
+  for(let r=0;r<8;r++)for(let i=0;i<8;i++){
+    const o=(r%2)*u/2;
+    const v=rnd(-9,9)|0;
+    x.fillStyle='rgb('+(203+v)+','+(194+v)+','+(174+v)+')';
+    x.fillRect(i*u+o+1,r*u+1,u-2,u-2);
+  }
+  grain(x,S,16000,.055);
+  return tex(c,1,1);
+}
+function stoneTex(){
+  const S=512,c=cvs(S),x=c.getContext('2d');
+  x.fillStyle='#8f887b'; x.fillRect(0,0,S,S);
+  for(let r=0;r<10;r++)for(let i=0;i<5;i++){
+    const v=rnd(-12,12)|0, o=(r%2)*(S/10);
+    x.fillStyle='rgb('+(143+v)+','+(136+v)+','+(123+v)+')';
+    x.fillRect(i*(S/5)+o+1.5,r*(S/10)+1.5,S/5-3,S/10-3);
+  }
+  grain(x,S,20000,.07);
+  return tex(c,1,1);
+}
+function panelTex(hex){
+  const S=512,c=cvs(S),x=c.getContext('2d');
+  x.fillStyle=hex; x.fillRect(0,0,S,S);
+  x.strokeStyle='rgba(0,0,0,.14)'; x.lineWidth=2;
+  for(let i=0;i<=S;i+=S/4){ x.beginPath(); x.moveTo(0,i); x.lineTo(S,i); x.stroke(); }
+  for(let i=0;i<=S;i+=S/6){ x.beginPath(); x.moveTo(i,0); x.lineTo(i,S); x.stroke(); }
+  grain(x,S,9000,.05);
+  return tex(c,1,1);
+}
+function mullionTex(cols,rows){
+  const S=512,c=cvs(S),x=c.getContext('2d');
+  x.clearRect(0,0,S,S);
+  x.fillStyle='#3b3830';
+  const w=S/cols,h=S/rows,t=S/64;
+  for(let i=0;i<=cols;i++) x.fillRect(i*w-t/2,0,t,S);
+  for(let j=0;j<=rows;j++) x.fillRect(0,j*h-t/2,S,t);
+  x.fillRect(0,0,S,t*1.6); x.fillRect(0,S-t*1.6,S,t*1.6);
+  return tex(c,1,1);
+}
+function rippleNormal(){
+  const S=128,c=cvs(S),x=c.getContext('2d');
+  const img=x.createImageData(S,S);
+  const H=(i,j)=>Math.sin(TAU*6*i/S)*0.5+Math.sin(TAU*5*j/S+1.3)*0.5+Math.sin(TAU*9*(i+j)/S)*0.3;
+  for(let j=0;j<S;j++)for(let i=0;i<S;i++){
+    const dx=H(i+1,j)-H(i-1,j), dy=H(i,j+1)-H(i,j-1);
+    let nx=-dx*.9, ny=-dy*.9, nz=1;
+    const l=Math.sqrt(nx*nx+ny*ny+nz*nz); nx/=l; ny/=l; nz/=l;
+    const k=(j*S+i)*4;
+    img.data[k]=(nx*.5+.5)*255; img.data[k+1]=(ny*.5+.5)*255;
+    img.data[k+2]=(nz*.5+.5)*255; img.data[k+3]=255;
+  }
+  x.putImageData(img,0,0);
+  return tex(c,7,7,false);
+}
+function skyTex(top,horizon,ground){
+  const c=document.createElement('canvas'); c.width=4; c.height=256;
+  const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,256);
+  g.addColorStop(0,ground); g.addColorStop(.44,ground);
+  g.addColorStop(.50,horizon); g.addColorStop(.70,horizon);
+  g.addColorStop(1,top);
+  x.fillStyle=g; x.fillRect(0,0,4,256);
+  const t=new THREE.CanvasTexture(c);
+  t.encoding=THREE.sRGBEncoding; t.wrapS=THREE.ClampToEdgeWrapping;
+  return t;
+}
+function glowSprite(){
+  const S=128,c=cvs(S),x=c.getContext('2d');
+  const g=x.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
+  g.addColorStop(0,'rgba(255,250,232,1)');
+  g.addColorStop(.25,'rgba(255,228,168,.55)');
+  g.addColorStop(1,'rgba(255,220,150,0)');
+  x.fillStyle=g; x.fillRect(0,0,S,S);
+  return tex(c,1,1);
+}
+function shadowBlob(){
+  const S=128,c=cvs(S),x=c.getContext('2d');
+  const g=x.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
+  g.addColorStop(0,'rgba(0,0,0,.42)'); g.addColorStop(.6,'rgba(0,0,0,.16)');
+  g.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle=g; x.fillRect(0,0,S,S);
+  return tex(c,1,1,false);
+}
+function labelTex(main,sub){
+  const W=512,H=128,c=document.createElement('canvas'); c.width=W;c.height=H;
+  const x=c.getContext('2d');
+  x.fillStyle='rgba(10,13,18,.82)'; x.fillRect(6,30,W-12,68);
+  x.strokeStyle='rgba(224,163,60,.6)'; x.lineWidth=2; x.strokeRect(6,30,W-12,68);
+  x.fillStyle='#e0a33c'; x.fillRect(6,30,5,68);
+  x.fillStyle='#f0f3f7'; x.font='700 30px Archivo, sans-serif'; x.textBaseline='middle';
+  x.fillText(main,26,58);
+  x.fillStyle='#8b95a4'; x.font='400 18px "JetBrains Mono", monospace';
+  x.fillText(sub,26,84);
+  const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; return t;
+}
+
+/* =====================================================================
+   renderer / scene
+   ===================================================================== */
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.5,4000);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+let quality=1;                                   // 1 = high, 0 = fast
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+document.getElementById('stage').appendChild(renderer.domElement);
+const MAXANISO=renderer.capabilities.getMaxAnisotropy();
+
+/* textures */
+const T={ grass:grassTex(), pave:paveTex(), stone:stoneTex(), ripple:rippleNormal(),
+          glow:glowSprite(), blob:shadowBlob(), mull:mullionTex(6,3) };
+[T.grass,T.pave,T.stone].forEach(t=>{ t.anisotropy=MAXANISO; });
+T.pave2=T.pave.clone(); T.pave2.needsUpdate=true; T.pave2.repeat.set(16,4); T.pave2.anisotropy=MAXANISO;
+T.paveBig=T.pave.clone(); T.paveBig.needsUpdate=true; T.paveBig.repeat.set(14,14); T.paveBig.anisotropy=MAXANISO;
+
+/* sky dome */
+const skyMat=new THREE.MeshBasicMaterial({side:THREE.BackSide,depthWrite:false,fog:false});
+const sky=new THREE.Mesh(new THREE.SphereGeometry(1800,32,20),skyMat);
+scene.add(sky);
+scene.fog=new THREE.Fog(0xd6e2ec,340,1250);
+
+const sunSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:T.glow,transparent:true,
+  depthWrite:false,depthTest:true,fog:false,blending:THREE.AdditiveBlending}));
+sunSprite.scale.set(300,300,1);
+scene.add(sunSprite);
+
+/* lights */
+const hemi=new THREE.HemisphereLight(0xcfe0f2,0x40492f,0.5); scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xfff2dc,1.5);
+sun.castShadow=true;
+sun.shadow.mapSize.set(4096,4096);
+sun.shadow.camera.left=-200; sun.shadow.camera.right=200;
+sun.shadow.camera.top=200;  sun.shadow.camera.bottom=-200;
+sun.shadow.camera.near=40;  sun.shadow.camera.far=900;
+sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.35;
+scene.add(sun); scene.add(sun.target);
+const bounce=new THREE.DirectionalLight(0x9fb9e0,0.28); scene.add(bounce);
+
+/* =====================================================================
+   materials
+   ===================================================================== */
+const glassMats=[], emissiveNight=[], lampMats=[];
+
+function makeSkinMats(v){
+  const s=SKIN[v];
+  const panel=new THREE.MeshStandardMaterial({map:panelTex('#'+s.panel.toString(16).padStart(6,'0')),
+    color:0xffffff,roughness:0.72,metalness:0.02,envMapIntensity:0.7});
+  panel.map.repeat.set(1,1);
+  const glass=new THREE.MeshPhysicalMaterial({color:s.glass,roughness:0.06,metalness:0.05,
+    transparent:true,opacity:0.42,side:THREE.DoubleSide,envMapIntensity:1.5,
+    clearcoat:0.9,clearcoatRoughness:0.06,emissive:0xffcf8a,emissiveIntensity:0});
+  glassMats.push(glass); emissiveNight.push(glass);
+  const mull=new THREE.MeshStandardMaterial({map:T.mull,transparent:false,alphaTest:0.45,
+    side:THREE.DoubleSide,color:0x6b6559,roughness:0.5,metalness:0.5,envMapIntensity:0.9});
+  return {
+    panel:panel, glass:glass, mull:mull,
+    fin:new THREE.MeshStandardMaterial({color:s.fin,vertexColors:true,roughness:0.62,
+      metalness:0.03,envMapIntensity:0.6}),
+    base:new THREE.MeshStandardMaterial({map:T.stone,color:0xffffff,roughness:0.9,envMapIntensity:0.4}),
+    soffit:new THREE.MeshStandardMaterial({color:s.soffit,roughness:0.85,envMapIntensity:0.5}),
+    slab:new THREE.MeshStandardMaterial({color:0xe6e2d8,roughness:0.8,envMapIntensity:0.5}),
+    roof:new THREE.MeshStandardMaterial({color:s.roof,roughness:0.94,envMapIntensity:0.35}),
+    parapet:new THREE.MeshStandardMaterial({color:0x6f6a60,roughness:0.75,metalness:0.15,envMapIntensity:0.6}),
+    pv:new THREE.MeshStandardMaterial({color:0x1b2440,roughness:0.22,metalness:0.55,envMapIntensity:1.1}),
+    metal:new THREE.MeshStandardMaterial({color:0x4d4941,roughness:0.4,metalness:0.7,envMapIntensity:1.1}),
+    rail:new THREE.MeshStandardMaterial({color:0x9fb0bb,roughness:0.18,metalness:0.2,transparent:true,
+      opacity:0.34,side:THREE.DoubleSide,envMapIntensity:1.2})
+  };
+}
+function progMat(hex,op){
+  return new THREE.MeshStandardMaterial({color:hex,roughness:0.88,metalness:0.0,
+    envMapIntensity:0.3,transparent:op!==undefined,opacity:op===undefined?1:op});
+}
+const PM={};
+Object.keys(PROG).forEach(k=>{
+  if(k==='atrium'){
+    PM[k]=new THREE.MeshPhysicalMaterial({color:PROG[k],roughness:0.05,metalness:0.1,
+      transparent:true,opacity:0.28,envMapIntensity:1.6,side:THREE.DoubleSide});
+  }else{
+    PM[k]=progMat(PROG[k]);
+  }
+});
+
+const outlineMat=new THREE.LineBasicMaterial({color:0x2b2b2b,transparent:true,opacity:0.26});
+
+/* =====================================================================
+   the block
+   ===================================================================== */
+function buildBlock(idx){
+  const P=PLANS[idx];
+  const M=makeSkinMats(idx);
+  const root=new THREE.Group();
+  const levels=[new THREE.Group(),new THREE.Group(),new THREE.Group()];
+  const roofG=new THREE.Group();
+  levels.forEach(g=>root.add(g)); root.add(roofG);
+
+  const Ri=P.Ri, Ro=P.Ro, L=P.L, fh=BLK.fh;
+  const rMid=(Ri+Ro)/2;
+  const aC=BASE[idx], aS=aC-(L/rMid)/2;
+  const A=s=>aS+s/rMid;                       // arc length -> angle
+  const eps=0.07/rMid;
+  const a0=A(0), a1=A(L);
+  const slabIn=Ri-1.6, slabOut=Ro+2.0;
+  const plH=BLK.plinth;
+
+  const outline=(mesh,g)=>{
+    const e=new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry,25),outlineMat);
+    e.position.copy(mesh.position); g.add(e);
+  };
+
+  /* ---- plinth + entrance steps to the courtyard ---- */
+  levels[0].add(arcSolid(slabIn-1.3,slabOut+1.3,a0-0.02,a1+0.02,plH,M.base,0));
+  for(let k=0;k<4;k++){
+    const ro=slabIn-1.3-k*1.15, ri=ro-1.15;
+    levels[0].add(arcSolid(ri,ro,A(P.entry-6.5),A(P.entry+6.5),plH*(1-k*0.22),M.base,0));
+  }
+
+  /* ---- levels ---- */
+  for(let f=0;f<BLK.levels;f++){
+    const G=levels[f], yF=plH+f*fh;
+
+    /* floor plate + white soffit, with chajja overhang on both faces */
+    G.add(arcSolid(slabIn,slabOut,a0-0.015,a1+0.015,0.34,M.slab,yF-0.34));
+    G.add(arcSolid(slabIn,slabOut,a0-0.015,a1+0.015,0.05,M.soffit,yF-0.39));
+
+    /* rooms */
+    P.rooms[f].forEach(R=>{
+      const z0=A(R.s[0])+eps, z1=A(R.s[1])-eps;
+      if(z1<=z0) return;
+      const mat=PM[R.t]||PM.corr;
+
+      if(R.t==='atrium'){
+        const v=arcSolid(R.r[0]+0.3,R.r[1]-0.3,z0,z1,0.05,mat,yF);
+        v.castShadow=false; G.add(v);
+        return;
+      }
+      /* projecting volumes (the research block's step classrooms) get their own plate */
+      if(R.r[0]<Ri-0.5){
+        G.add(arcSolid(R.r[0]-0.5,Ri+0.2,A(R.s[0])-0.5/rMid,A(R.s[1])+0.5/rMid,0.34,M.slab,yF-0.34));
+        G.add(arcSolid(R.r[0]-0.5,Ri+0.2,A(R.s[0])-0.5/rMid,A(R.s[1])+0.5/rMid,0.05,M.soffit,yF-0.39));
+      }
+      const h=(R.t==='corr'||R.t==='veranda')?0.07:(R.t==='core'?fh-0.06:fh-0.62);
+      const m=arcSolid(R.r[0]+0.06,R.r[1]-0.06,z0,z1,h,mat,yF+0.03);
+      m.castShadow=(R.r[0]<Ri-0.5);
+      G.add(m);
+      if(h>1 && (R.r[1]-R.r[0])>2 && R.t!=='core') outline(m,G);
+    });
+
+    /* facades derived from which rooms actually touch each face */
+    facade(G,f,yF,P.faceIn,-1);
+    facade(G,f,yF,P.faceOut,+1);
+
+    /* verandah columns + balustrade on the courtyard face */
+    if(P.veranda){
+      const cg=[];
+      for(let sv=2;sv<=L-2;sv+=5.5){
+        const a=A(sv), pt=polar((Ri+P.faceIn)/2,a,0);
+        const c=new THREE.CylinderGeometry(0.19,0.22,fh,10); c.translate(0,fh/2,0);
+        cg.push({geo:place(c,pt.x,yF,pt.z,0),color:0xdad4c6});
+      }
+      const cols=new THREE.Mesh(mergeColored(cg),
+        new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.75,envMapIntensity:0.5}));
+      cols.castShadow=true; cols.receiveShadow=true; G.add(cols);
+      G.add(curvedWall(Ri+0.12,1.05,a0,a1,M.rail,yF+0.55));
+      G.add(arcSolid(Ri+0.02,Ri+0.22,a0,a1,0.08,M.metal,yF+1.08));
+    }
+    /* atrium balustrades + bridges on upper levels */
+    if(f>0){
+      const at=P.atrium;
+      [at.r[0],at.r[1]].forEach(r=>{
+        G.add(curvedWall(r,1.1,A(at.s[0]),A(at.s[1]),M.rail,yF+0.55));
+      });
+      [0.32,0.68].forEach(t=>{
+        const a=A(at.s[0]+(at.s[1]-at.s[0])*t);
+        const br=new THREE.Mesh(new THREE.BoxGeometry(at.r[1]-at.r[0],0.28,3.0),M.slab);
+        br.position.copy(polar((at.r[0]+at.r[1])/2,a,yF-0.14));
+        br.rotation.y=faceX(a); br.castShadow=true; br.receiveShadow=true; G.add(br);
+      });
+    }
+    /* entrance canopy over the courtyard door, ground level only */
+    if(f===0){
+      const ez0=A(P.entry-6.5), ez1=A(P.entry+6.5);
+      G.add(arcSolid(Ri-9,Ri-0.4,ez0,ez1,0.28,M.metal,yF+fh*0.86));
+      [P.entry-5,P.entry,P.entry+5].forEach(sv=>{
+        const c=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,fh*0.86,10),M.metal);
+        c.position.copy(polar(Ri-8,A(sv),yF+fh*0.43)); c.castShadow=true; G.add(c);
+      });
+    }
+  }
+
+  /* ---- roof ---- */
+  {
+    const yR=plH+BLK.levels*fh;
+    const at=P.atrium, az0=A(at.s[0]), az1=A(at.s[1]);
+    [[a0,az0],[az1,a1]].forEach(rg=>{
+      if(rg[1]-rg[0]<0.01) return;
+      roofG.add(arcSolid(slabIn,slabOut,rg[0]-0.015,rg[1]+0.015,0.3,M.roof,yR));
+      const n=Math.max(1,Math.round((rg[1]-rg[0])*rMid/6.5));
+      const pvs=[];
+      for(let k=0;k<n;k++){
+        const a=rg[0]+(rg[1]-rg[0])*((k+0.5)/n);
+        for(let row=0;row<3;row++){
+          const r=Ri+4+row*(Ro-Ri-9)/2;
+          const g=new THREE.BoxGeometry(4.4,0.12,2.8); g.rotateX(-16*D2R);
+          const pt=polar(r,a,yR+0.82);
+          pvs.push({geo:place(g,pt.x,pt.y,pt.z,faceZ(a)),color:0x1b2440});
+          pvs.push({geo:place(new THREE.BoxGeometry(0.12,0.66,0.12),pt.x,yR+0.48,pt.z,0),color:0x555049});
+        }
+      }
+      const pv=new THREE.Mesh(mergeColored(pvs),
+        new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.25,metalness:0.5,envMapIntensity:1.1}));
+      pv.castShadow=true; roofG.add(pv);
+      const pm=(rg[0]+rg[1])/2;
+      const box=new THREE.Mesh(new THREE.BoxGeometry(5.5,2.3,3.6),M.panel);
+      box.position.copy(polar(rMid,pm,yR+1.45)); box.rotation.y=faceZ(pm);
+      box.castShadow=true; roofG.add(box);
+    });
+    roofG.add(curvedWall(slabIn+0.06,1.15,a0,a1,M.parapet,yR+0.9));
+    roofG.add(curvedWall(slabOut-0.06,1.15,a0,a1,M.parapet,yR+0.9));
+    roofG.add(arcSolid(slabIn,slabIn+0.34,a0,a1,0.16,M.metal,yR+1.47));
+    roofG.add(arcSolid(slabOut-0.34,slabOut,a0,a1,0.16,M.metal,yR+1.47));
+
+    /* barrel skylight following the atrium */
+    const Rt=(at.r[1]-at.r[0])/2+0.5, rc=(at.r[0]+at.r[1])/2;
+    const surf=paramSurface((u,v)=>{
+      const a=lerp(az0,az1,u), b=lerp(-72*D2R,72*D2R,v);
+      const r=rc+Rt*Math.sin(b);
+      return new THREE.Vector3(Math.cos(a)*r, yR+0.2+Math.cos(b)*Rt*0.72, Math.sin(a)*r);
+    },26,14);
+    const gr=new THREE.MeshPhysicalMaterial({color:0xbfe4ee,roughness:0.04,metalness:0.05,
+      transparent:true,opacity:0.3,side:THREE.DoubleSide,envMapIntensity:1.8,
+      clearcoat:1,clearcoatRoughness:0.03});
+    glassMats.push(gr);
+    roofG.add(new THREE.Mesh(surf,gr));
+    const ribs=[];
+    for(let k=0;k<=9;k++){
+      const a=lerp(az0,az1,k/9);
+      const g=new THREE.TorusGeometry(Rt,0.1,6,26,Math.PI); g.scale(1,0.72,1);
+      const pt=polar(rc,a,yR+0.2);
+      ribs.push({geo:place(g,pt.x,pt.y,pt.z,faceX(a)),color:0x4d4941});
+    }
+    const rm2=new THREE.Mesh(mergeColored(ribs),
+      new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.4,metalness:0.7,envMapIntensity:1.1}));
+    rm2.castShadow=true; roofG.add(rm2);
+  }
+
+  /* ---- name plate ---- */
+  const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTex(P.name,P.sub),
+    transparent:true,depthTest:false,depthWrite:false,fog:false}));
+  spr.scale.set(28,7,1);
+  spr.position.copy(polar(rMid,aC,BLK.top+9));
+  spr.renderOrder=10;
+  root.add(spr);
+
+  scene.add(root);
+  return {root:root,levels:levels,roof:roofG,label:spr,plan:P,
+          center:polar(rMid,aC,0), aC:aC};
+
+  /* ---------- facade ---------- */
+  function facade(G,f,yF,r,sgn){
+    P.rooms[f].forEach(R=>{
+      const touch = sgn<0 ? (R.r[0]<=r+0.02) : (R.r[1]>=r-0.02);
+      if(!touch) return;
+      if(R.t==='corr'||R.t==='veranda'||R.t==='atrium') return;
+      if(R.r[0]<Ri-0.5) return;                       // projecting pods glazed separately
+      const z0=A(R.s[0]), z1=A(R.s[1]);
+      const solid=(R.t==='core'||R.t==='toilet');
+      G.add(arcSolid(r-0.14,r+0.14,z0,z1,0.95,M.panel,yF+0.02));
+      if(solid){
+        G.add(arcSolid(r-0.14,r+0.14,z0,z1,fh,M.panel,yF));
+        G.add(curvedWall(r+sgn*0.17,1.0,z0+0.7/rMid,z1-0.7/rMid,M.glass,yF+fh*0.62));
+      }else{
+        G.add(curvedWall(r+sgn*0.06,fh-1.5,z0,z1,M.glass,yF+0.97+(fh-1.5)/2));
+        G.add(curvedWall(r+sgn*0.13,fh-1.5,z0,z1,M.mull,yF+0.97+(fh-1.5)/2));
+      }
+    });
+    /* vertical shading fins the length of the facade */
+    const fins=[];
+    const step=sgn<0?2.6:1.75, dep=sgn<0?0.32:0.9, wid=sgn<0?0.14:0.22;
+    for(let sv=step*0.5; sv<L; sv+=step){
+      const a=A(sv);
+      const g=new THREE.BoxGeometry(wid,fh-0.5,dep);
+      const pt=polar(r+sgn*(dep/2+0.16),a,yF+(fh-0.5)/2+0.1);
+      fins.push({geo:place(g,pt.x,pt.y,pt.z,faceZ(a)),color:0xffffff});
+    }
+    if(fins.length){
+      const fm=new THREE.Mesh(mergeColored(fins),M.fin);
+      fm.castShadow=true; fm.receiveShadow=true; G.add(fm);
+    }
+  }
+}
+
+/* build the three petals */
+const blocks=[0,1,2].map(buildBlock);
+
+/* =====================================================================
+   instancing helpers (people, cars)
+   ===================================================================== */
+function personGeo(shirt){
+  const p=[];
+  const legs=new THREE.CylinderGeometry(0.15,0.13,0.85,7); legs.translate(0,0.43,0); p.push({geo:legs,color:0x2f3742});
+  const b=new THREE.CylinderGeometry(0.20,0.17,0.72,8); b.translate(0,1.22,0); p.push({geo:b,color:shirt});
+  const h=new THREE.SphereGeometry(0.15,8,7); h.translate(0,1.71,0); p.push({geo:h,color:0x8c6a4e});
+  return mergeColored(p);
+}
+function carGeo(body){
+  const p=[];
+  const b=new THREE.BoxGeometry(4.3,0.85,1.85); b.translate(0,0.72,0); p.push({geo:b,color:body});
+  const c=new THREE.BoxGeometry(2.3,0.72,1.66); c.translate(-0.15,1.42,0); p.push({geo:c,color:0x2a3038});
+  [[1.45,0.9],[1.45,-0.9],[-1.45,0.9],[-1.45,-0.9]].forEach(w=>{
+    const g=new THREE.CylinderGeometry(0.35,0.35,0.26,10); g.rotateX(Math.PI/2); g.translate(w[0],0.35,w[1]);
+    p.push({geo:g,color:0x14171b}); });
+  return mergeColored(p);
+}
+function instance(geo,mat,list,shadow){
+  const im=new THREE.InstancedMesh(geo,mat,list.length);
+  const d=new THREE.Object3D();
+  list.forEach((t,i)=>{ d.position.set(t.x,t.y||0,t.z); d.rotation.set(0,t.ry||0,0); d.scale.setScalar(t.s||1);
+    d.updateMatrix(); im.setMatrixAt(i,d.matrix); });
+  im.instanceMatrix.needsUpdate=true; im.castShadow=!!shadow; im.receiveShadow=true;
+  scene.add(im); return im;
+}
+const vcMat=(rough)=>new THREE.MeshStandardMaterial({vertexColors:true,roughness:rough||0.95,flatShading:true,envMapIntensity:0.35});
+/* =====================================================================
+   SITE ACCESS & CIRCULATION LAYER (built from SITEGEO — same data as drawings)
+   ===================================================================== */
+const GEO=SITEGEO.build();
+const signMats=[];
+const GK=GEO.K;
+const site=new THREE.Group(); scene.add(site);
+const ground=new THREE.Mesh(new THREE.CircleGeometry(900,64),new THREE.MeshStandardMaterial({
+  map:(()=>{const t=T.grass.clone();t.needsUpdate=true;t.repeat.set(230,230);t.anisotropy=MAXANISO;return t;})(),
+  color:0xbecbb0,roughness:1,envMapIntensity:0.32}));
+ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+
+/* ---- surface textures ---- */
+function noiseTex(base,spread,n,rx,dotA){
+  const S=256,c=cvs(S),x=c.getContext('2d'); x.fillStyle=base; x.fillRect(0,0,S,S);
+  for(let i=0;i<n;i++){ const v=rnd(-spread,spread)|0; x.fillStyle='rgba('+(v>0?255:0)+','+(v>0?255:0)+','+(v>0?255:0)+','+(Math.abs(v)/255*(dotA||1)).toFixed(3)+')';
+    x.fillRect(rnd(0,S),rnd(0,S),rnd(1,2.2),rnd(1,2.2)); }
+  return tex(c,1,1);
+}
+function brickTex(r,g,b,var_,rows){
+  const S=256,c=cvs(S),x=c.getContext('2d'); x.fillStyle='rgb('+(r*0.72|0)+','+(g*0.72|0)+','+(b*0.72|0)+')'; x.fillRect(0,0,S,S);
+  const h=S/rows,w=h*2;
+  for(let j=0;j<rows;j++)for(let i=-1;i<S/w+1;i++){
+    const o=(j%2)*w/2, v=rnd(-var_,var_)|0;
+    x.fillStyle='rgb('+(r+v)+','+(g+v)+','+(b+v)+')'; x.fillRect(i*w+o+1.2,j*h+1.2,w-2.4,h-2.4);
+  }
+  grain(x,S,5000,.06); return tex(c,1,1);
+}
+const STEX={
+  asph:noiseTex('#34373b',60,16000,1,0.55),
+  conc:noiseTex('#b9bbba',40,9000,1,0.35),
+  icbp:brickTex(168,92,66,12,10),
+  icbpH:brickTex(150,78,56,10,10),
+  pav:brickTex(158,162,164,9,10),
+  pav2:brickTex(170,173,174,9,12),
+  apron:brickTex(206,194,168,10,8),
+  mainasph:noiseTex('#3b3e41',60,16000,1,0.5)
+};
+Object.values(STEX).forEach(t=>{t.anisotropy=MAXANISO;});
+const SURF={
+  lawn:{y:0.02,mat:new THREE.MeshStandardMaterial({map:(()=>{const t=T.grass.clone();t.needsUpdate=true;return t;})(),color:0xe4f2da,roughness:1,envMapIntensity:0.3}),tile:6},
+  pav60:{y:0.06,mat:new THREE.MeshStandardMaterial({map:STEX.pav2,roughness:0.9,envMapIntensity:0.4}),tile:2.4},
+  pav80:{y:0.062,mat:new THREE.MeshStandardMaterial({map:STEX.pav,roughness:0.9,envMapIntensity:0.4}),tile:2.4},
+  icbp:{y:0.08,mat:new THREE.MeshStandardMaterial({map:STEX.icbp,roughness:0.92,envMapIntensity:0.35}),tile:2.4},
+  icbpH:{y:0.085,mat:new THREE.MeshStandardMaterial({map:STEX.icbpH,roughness:0.92,envMapIntensity:0.35}),tile:2.4},
+  conc:{y:0.10,mat:new THREE.MeshStandardMaterial({map:STEX.conc,roughness:0.86,envMapIntensity:0.45}),tile:9},
+  mainasph:{y:0.10,mat:new THREE.MeshStandardMaterial({map:STEX.mainasph,roughness:0.95,envMapIntensity:0.3}),tile:7},
+  asph:{y:0.11,mat:new THREE.MeshStandardMaterial({map:STEX.asph,roughness:0.93,envMapIntensity:0.3}),tile:7},
+  apron:{y:0.16,mat:new THREE.MeshStandardMaterial({map:STEX.apron,roughness:0.9,envMapIntensity:0.4}),tile:2.0}
+};
+/* flat shapes merged per surface kind, world-space UVs */
+function shapeOf(f){
+  const s=new THREE.Shape(f.pts.map(p=>new THREE.Vector2(p[0],-p[1])));
+  (f.holes||[]).forEach(h=>s.holes.push(new THREE.Path(h.map(p=>new THREE.Vector2(p[0],-p[1])))));
+  return s;
+}
+function mergeFlat(geos,tile,y){
+  let n=0; const parts=geos.map(g=>{const q=g.index?g.toNonIndexed():g; n+=q.attributes.position.count; return q;});
+  const pos=new Float32Array(n*3),nor=new Float32Array(n*3),uv=new Float32Array(n*2); let o=0;
+  parts.forEach(q=>{ const a=q.attributes.position.array;
+    for(let i=0;i<q.attributes.position.count;i++){
+      const X=a[i*3], Z=-a[i*3+1];
+      pos[(o+i)*3]=X; pos[(o+i)*3+1]=y; pos[(o+i)*3+2]=Z;
+      nor[(o+i)*3+1]=1; uv[(o+i)*2]=X/tile; uv[(o+i)*2+1]=Z/tile;
+    } o+=q.attributes.position.count; });
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('normal',new THREE.BufferAttribute(nor,3));
+  g.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+  return g;
+}
+const surfMeshes={};
+Object.keys(SURF).forEach(k=>{
+  const list=GEO.F.filter(f=>f.k===k); if(!list.length) return;
+  const g=mergeFlat(list.map(f=>new THREE.ShapeGeometry(shapeOf(f),6)),SURF[k].tile,SURF[k].y);
+  const m=new THREE.Mesh(g,SURF[k].mat); m.receiveShadow=true; site.add(m); surfMeshes[k]=m;
+});
+/* raised kerbed islands and cycle-shed bases: short extrusions */
+function extrudeKind(kind,h,mat){
+  GEO.F.filter(f=>f.k===kind).forEach(f=>{
+    const g=new THREE.ExtrudeGeometry(shapeOf(f),{depth:h,bevelEnabled:false,curveSegments:6});
+    g.rotateX(-Math.PI/2);
+    const m=new THREE.Mesh(g,mat); m.position.y=0.04; m.receiveShadow=true; m.castShadow=false; site.add(m);
+  });
+}
+const kerbGrass=new THREE.MeshStandardMaterial({map:(()=>{const t=T.grass.clone();t.needsUpdate=true;t.repeat.set(0.25,0.25);return t;})(),color:0xb8d8a8,roughness:1});
+extrudeKind('island',0.2,[kerbGrass,new THREE.MeshStandardMaterial({color:0xe4e1d8,roughness:0.8})]);
+extrudeKind('shed',0.18,new THREE.MeshStandardMaterial({color:0xcfcfca,roughness:0.85}));
+
+/* rigid-pavement contraction joints (4.5 m) — ring + approach */
+{
+  const parts=[];
+  const jm=(a,b)=>{const g=new THREE.PlaneGeometry(1,1); g.rotateX(-Math.PI/2);
+    const dx=b[0]-a[0],dz=b[1]-a[1],L=Math.hypot(dx,dz); g.scale(L,1,0.05);
+    return {geo:place(g,(a[0]+b[0])/2,0.104,(a[1]+b[1])/2,-Math.atan2(dz,dx)),color:0x6f7274};};
+  const n=Math.round(2*Math.PI*GK.ringC/4.5);
+  for(let i=0;i<n;i++){ const t=i/n*360; if(Math.abs(t-90)<8) continue;
+    parts.push(jm(SITEGEO.P(GK.ringIn,t),SITEGEO.P(GK.ringOut,t))); }
+  for(let z=131;z<170;z+=4.5) parts.push(jm([-4.2,z],[4.2,z]));
+  const jmesh=new THREE.Mesh(mergeColored(parts),new THREE.MeshBasicMaterial({vertexColors:true}));
+  site.add(jmesh);
+}
+
+/* ---- markings (thermoplastic) ---- */
+{
+  const MC={w:0xf4f4f0,y:0xf2c230,b:0x2a6fdb,r:0xc62828};
+  const pos=[],col=[]; const c=new THREE.Color();
+  GEO.M.forEach(m=>{ const q=m.q; c.setHex(MC[m.c]);
+    [[0,2,1],[0,3,2]].forEach(tri=>tri.forEach(i=>{ pos.push(q[i][0],0.125,q[i][1]); col.push(c.r,c.g,c.b); })); });
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  g.computeVertexNormals();
+  const mk=new THREE.Mesh(g,new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.6,side:THREE.DoubleSide,
+    polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
+  mk.receiveShadow=true; site.add(mk);
+}
+
+/* ---- raised tables at crossings (subtle lighter asphalt hump) ---- */
+/* markings already carry the ramp triangles; the drawing set details the 100 mm table */
+
+/* ---- occupancy test for placing trees / people ---- */
+function inRing(r,x,z){let c=false;for(let i=0,j=r.length-1;i<r.length;j=i++){const a=r[i],b=r[j];if(((a[1]>z)!=(b[1]>z))&&(x<(b[0]-a[0])*(z-a[1])/(b[1]-a[1])+a[0]))c=!c;}return c;}
+const OCC=GEO.F.filter(f=>f.k!=='lawn').map(f=>{let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;f.pts.forEach(p=>{x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);z0=Math.min(z0,p[1]);z1=Math.max(z1,p[1]);});return {f,bb:[x0,x1,z0,z1]};});
+function kindAt(x,z){
+  for(let i=OCC.length-1;i>=0;i--){ const o=OCC[i];
+    if(x<o.bb[0]||x>o.bb[1]||z<o.bb[2]||z>o.bb[3]) continue;
+    if(!inRing(o.f.pts,x,z)) continue;
+    if(o.f.holes&&o.f.holes.some(h=>inRing(h,x,z))) continue;
+    return o.f.k; }
+  if(z>162&&z<184) return 'road';
+  return null;
+}
+function freeAt(x,z,m){ m=m||1.8; return [[0,0],[m,0],[-m,0],[0,m],[0,-m]].every(d=>kindAt(x+d[0],z+d[1])===null); }
+
+/* ---- street lighting ---- */
+const roadRef=[];
+for(let t=0;t<360;t+=2){ roadRef.push(SITEGEO.P(GK.ringC,t)); roadRef.push(SITEGEO.P(23.75,t)); }
+GK.spokes.forEach(th=>{ for(let r=30;r<110;r+=3) roadRef.push(SITEGEO.P(r,th)); });
+for(let z=124;z<171;z+=3) roadRef.push([0,z]);
+for(let x=-60;x<60;x+=3) roadRef.push([x,GK.mainC]);
+const lampHeadPos=[], glowPos=[], lightParts=[];
+const LCOL={road:0x3c4149,junction:0x33373d,parking:0x4a4f57,pedestrian:0x2f3338};
+GEO.L.forEach(l=>{
+  const h=l.h, x=l.x, z=l.z;
+  const pole=new THREE.CylinderGeometry(h>6?0.09:0.06,h>6?0.14:0.08,h,8); pole.translate(0,h/2,0);
+  lightParts.push({geo:place(pole,x,0,z,0),color:LCOL[l.type]});
+  const base=new THREE.CylinderGeometry(0.22,0.26,0.5,8); base.translate(0,0.25,0);
+  lightParts.push({geo:place(base,x,0,z,0),color:0x8d8c86});
+  if(l.type==='road'||l.type==='junction'){
+    let best=null,bd=1e9; roadRef.forEach(p=>{const d=(p[0]-x)**2+(p[1]-z)**2; if(d<bd){bd=d;best=p;}});
+    const dx=best[0]-x, dz=best[1]-z, L=Math.hypot(dx,dz)||1, ux=dx/L, uz=dz/L;
+    const reach=Math.min(2.2,L*0.6);
+    const arm=new THREE.BoxGeometry(reach,0.09,0.09); arm.translate(reach/2,0,0);
+    lightParts.push({geo:place(arm,x,h-0.15,z,-Math.atan2(uz,ux)),color:LCOL[l.type]});
+    const lum=new THREE.BoxGeometry(0.75,0.14,0.32);
+    lightParts.push({geo:place(lum,x+ux*reach,h-0.22,z+uz*reach,-Math.atan2(uz,ux)),color:0x5b6068});
+    lampHeadPos.push({x:x+ux*reach,y:h-0.32,z:z+uz*reach,s:1.2});
+    glowPos.push({x:x+ux*(reach+1.5),z:z+uz*(reach+1.5),s:h*2.1});
+  }else if(l.type==='parking'){
+    const bar=new THREE.BoxGeometry(2.2,0.08,0.08);
+    lightParts.push({geo:place(bar,x,h-0.1,z,0),color:LCOL.parking});
+    [-1,1].forEach(sg=>{ const lum=new THREE.BoxGeometry(0.6,0.12,0.3);
+      lightParts.push({geo:place(lum,x+sg*1.1,h-0.2,z,0),color:0x5b6068});
+      lampHeadPos.push({x:x+sg*1.1,y:h-0.3,z:z,s:1.0}); });
+    glowPos.push({x,z,s:h*2.3});
+  }else{
+    const cap=new THREE.CylinderGeometry(0.28,0.18,0.5,10); cap.translate(0,h+0.2,0);
+    lightParts.push({geo:place(cap,x,0,z,0),color:0x2c3036});
+    lampHeadPos.push({x,y:h,z,s:0.9});
+    glowPos.push({x,z,s:7});
+  }
+});
+{
+  const lm=new THREE.Mesh(mergeColored(lightParts),new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.5,metalness:0.4,envMapIntensity:0.8}));
+  lm.castShadow=true; scene.add(lm);
+}
+const lampHeadMat=new THREE.MeshStandardMaterial({color:0xfff6de,emissive:0xffe2a6,emissiveIntensity:0,roughness:0.3});
+lampMats.push(lampHeadMat);
+instance(new THREE.SphereGeometry(0.2,8,6),lampHeadMat,lampHeadPos,false);
+const glowMat=new THREE.MeshBasicMaterial({map:T.glow,transparent:true,opacity:0,depthWrite:false,
+  blending:THREE.AdditiveBlending,color:0xffd9a0,polygonOffset:true,polygonOffsetFactor:-4});
+const glowGeo=new THREE.PlaneGeometry(1,1); glowGeo.rotateX(-Math.PI/2);
+{
+  const im=new THREE.InstancedMesh(glowGeo,glowMat,glowPos.length); const d=new THREE.Object3D();
+  glowPos.forEach((g,i)=>{ d.position.set(g.x,0.14,g.z); d.scale.set(g.s,1,g.s); d.updateMatrix(); im.setMatrixAt(i,d.matrix); });
+  im.renderOrder=3; scene.add(im);
+}
+
+/* ---- traffic signs (IRC:67-2022 shapes; drawn procedurally) ---- */
+function signCanvas(code){
+  const S=256,c=cvs(S),x=c.getContext('2d'); x.clearRect(0,0,S,S);
+  const RED='#c62828', BLUE='#1f5aa6', WH='#ffffff', BK='#111';
+  const circ=(fill,ring)=>{ x.beginPath(); x.arc(128,128,120,0,7); x.fillStyle=ring; x.fill();
+    x.beginPath(); x.arc(128,128,ring===fill?120:94,0,7); x.fillStyle=fill; x.fill(); };
+  const tri=(up)=>{ x.beginPath(); if(up){x.moveTo(128,10);x.lineTo(248,226);x.lineTo(8,226);}else{x.moveTo(8,20);x.lineTo(248,20);x.lineTo(128,236);} x.closePath();
+    x.fillStyle=RED; x.fill(); x.beginPath(); if(up){x.moveTo(128,50);x.lineTo(214,206);x.lineTo(42,206);}else{x.moveTo(44,40);x.lineTo(212,40);x.lineTo(128,196);} x.closePath(); x.fillStyle=WH; x.fill(); };
+  const sq=(col)=>{ x.fillStyle=col; x.fillRect(10,10,236,236); x.strokeStyle=WH; x.lineWidth=8; x.strokeRect(20,20,216,216); };
+  const txt=(t,sz,col,y)=>{ x.fillStyle=col; x.font='800 '+sz+'px Archivo, Arial, sans-serif'; x.textAlign='center'; x.textBaseline='middle'; x.fillText(t,128,y||132); };
+  const walker=(col,cx,cy,k)=>{ k=k||1; x.fillStyle=col; x.beginPath(); x.arc(cx,cy-46*k,13*k,0,7); x.fill();
+    x.lineWidth=13*k; x.lineCap='round'; x.strokeStyle=col; x.beginPath(); x.moveTo(cx,cy-30*k); x.lineTo(cx-4*k,cy+8*k);
+    x.lineTo(cx-24*k,cy+46*k); x.moveTo(cx-4*k,cy+8*k); x.lineTo(cx+20*k,cy+46*k); x.moveTo(cx-2*k,cy-22*k); x.lineTo(cx-26*k,cy); x.moveTo(cx,cy-22*k); x.lineTo(cx+24*k,cy-6*k); x.stroke(); };
+  switch(code){
+    case 'STOP': x.beginPath(); for(let i=0;i<8;i++){const a=(i/8)*Math.PI*2+Math.PI/8; x.lineTo(128+120*Math.cos(a),128+120*Math.sin(a));} x.closePath(); x.fillStyle=RED; x.fill(); x.strokeStyle=WH; x.lineWidth=8; x.stroke(); txt('STOP',70,WH); break;
+    case 'GIVE_WAY': tri(false); break;
+    case 'RBT_AHEAD': tri(true); x.strokeStyle=BK; x.lineWidth=12; for(let i=0;i<3;i++){ x.beginPath(); x.arc(128,150,34,i*2.09+0.3,i*2.09+1.6); x.stroke(); } break;
+    case 'PED_AHEAD': tri(true); walker(BK,128,150,0.85); break;
+    case 'HUMP': tri(true); x.fillStyle=BK; x.beginPath(); x.moveTo(60,186); x.quadraticCurveTo(128,110,196,186); x.closePath(); x.fill(); break;
+    case 'SIDE_LEFT': case 'SIDE_RIGHT': tri(true); x.fillStyle=BK; x.fillRect(118,90,20,110); x.fillRect(code==='SIDE_LEFT'?70:128,132,58,18); break;
+    case 'PED_X': sq(BLUE); x.fillStyle=WH; x.beginPath(); x.moveTo(40,210); x.lineTo(216,210); x.lineTo(128,48); x.closePath(); x.fill(); walker(BK,128,160,0.75); break;
+    case 'KEEP_LEFT': circ(BLUE,BLUE); x.strokeStyle=WH; x.lineWidth=22; x.beginPath(); x.moveTo(160,70); x.lineTo(96,170); x.stroke(); x.fillStyle=WH; x.beginPath(); x.moveTo(70,196); x.lineTo(78,130); x.lineTo(126,172); x.closePath(); x.fill(); break;
+    case 'NO_ENTRY': circ(RED,RED); x.fillStyle=WH; x.fillRect(46,108,164,40); break;
+    case 'SPEED20': circ(WH,RED); txt('20',92,BK); break;
+    case 'SPEED10': circ(WH,RED); txt('10',92,BK); break;
+    case 'NO_HORN': circ(WH,RED); x.fillStyle=BK; x.beginPath(); x.moveTo(70,110); x.lineTo(110,110); x.lineTo(170,76); x.lineTo(170,180); x.lineTo(110,146); x.lineTo(70,146); x.closePath(); x.fill();
+      x.strokeStyle=RED; x.lineWidth=20; x.beginPath(); x.moveTo(52,52); x.lineTo(204,204); x.stroke(); break;
+    case 'P': sq(BLUE); txt('P',150,WH,136); break;
+    case 'P2W': sq(BLUE); txt('P',96,WH,96); txt('2W',60,WH,190); break;
+    case 'CYCLE': sq(BLUE); x.strokeStyle=WH; x.lineWidth=12; [[84,160],[172,160]].forEach(w=>{x.beginPath();x.arc(w[0],w[1],32,0,7);x.stroke();});
+      x.beginPath(); x.moveTo(84,160); x.lineTo(116,104); x.lineTo(160,104); x.lineTo(172,160); x.moveTo(116,104); x.lineTo(128,160); x.stroke(); break;
+    case 'ACC': sq(BLUE); x.fillStyle=WH; x.beginPath(); x.arc(118,68,16,0,7); x.fill(); x.strokeStyle=WH; x.lineWidth=14;
+      x.beginPath(); x.moveTo(118,92); x.lineTo(118,150); x.lineTo(170,150); x.lineTo(186,196); x.stroke(); x.beginPath(); x.arc(118,170,44,0.5,3.4); x.stroke(); break;
+    case 'BUS': sq(BLUE); txt('BUS',72,WH,110); txt('STOP',44,WH,178); break;
+    case 'PED_ONLY': circ(BLUE,BLUE); walker(WH,128,138,1.0); break;
+    case 'WAY': x.fillStyle='#24332c'; x.fillRect(40,6,176,244); txt('Academic',24,WH,48); txt('Library',24,WH,98); txt('Research',24,WH,148); txt('Parking',24,'#f2c230',198); break;
+    case 'CHEVRON': x.fillStyle='#f2c230'; x.fillRect(40,6,176,244); x.fillStyle=BK; for(let k=0;k<3;k++){ x.beginPath(); x.moveTo(84,20+k*76); x.lineTo(172,58+k*76); x.lineTo(84,96+k*76); x.lineTo(84,72+k*76); x.lineTo(130,58+k*76); x.lineTo(84,44+k*76); x.closePath(); x.fill(); } break;
+    case 'DIR': x.fillStyle='#1c6b3d'; x.fillRect(4,40,248,176); x.strokeStyle=WH; x.lineWidth=5; x.strokeRect(12,48,232,160);
+      x.lineWidth=12; x.beginPath(); x.arc(128,128,26,0,7); x.stroke(); x.beginPath(); x.moveTo(128,202); x.lineTo(128,154); x.moveTo(128,102); x.lineTo(128,66); x.moveTo(104,114); x.lineTo(56,86); x.moveTo(152,114); x.lineTo(200,86); x.stroke();
+      x.fillStyle=WH; x.font='700 17px Archivo, Arial'; x.textAlign='center'; x.fillText('ACADEMIC',128,60); x.fillText('LIBRARY',50,122); x.fillText('RESEARCH',204,122); break;
+  }
+  const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.anisotropy=4; return t;
+}
+const SIGN_SIZE={DIR:[2.2,2.2],WAY:[0.9,1.3],CHEVRON:[0.6,0.9],STOP:[0.9,0.9],GIVE_WAY:[0.9,0.9]};
+const signCodes=[...new Set(GEO.S.map(s=>s.code))];
+const signGroup=new THREE.Group(); scene.add(signGroup);
+{
+  const postParts=[], backs=[];
+  signCodes.forEach(code=>{
+    const list=GEO.S.filter(s=>s.code===code), sz=SIGN_SIZE[code]||[0.75,0.75];
+    const g=new THREE.PlaneGeometry(sz[0],sz[1]);
+    const mat=new THREE.MeshStandardMaterial({map:signCanvas(code),transparent:true,alphaTest:0.3,roughness:0.5,
+      emissive:0xffffff,emissiveIntensity:0});
+    mat.emissiveMap=mat.map;
+    signMats.push(mat);
+    const im=new THREE.InstancedMesh(g,mat,list.length); const d=new THREE.Object3D();
+    list.forEach((s,i)=>{
+      const topY=(code==='DIR'?3.6:(code==='WAY'?1.6:2.6));
+      const ry=(90-s.face)*Math.PI/180, nx=Math.cos(s.face*Math.PI/180), nz=Math.sin(s.face*Math.PI/180);
+      d.position.set(s.x+nx*0.06,topY-sz[1]/2+ (code==='WAY'?0:0.1),s.z+nz*0.06); d.rotation.set(0,ry,0); d.updateMatrix(); im.setMatrixAt(i,d.matrix);
+      const bk=new THREE.PlaneGeometry(sz[0]*0.96,sz[1]*0.96); bk.rotateY(Math.PI);
+      backs.push({geo:place(bk,s.x+nx*0.04,topY-sz[1]/2+0.1,s.z+nz*0.04,ry),color:0x7c8288});
+      const ph=code==='WAY'?topY:topY-0.1;
+      if(code==='DIR'){ [-0.8,0.8].forEach(o=>{ const p=new THREE.CylinderGeometry(0.06,0.06,ph,6); p.translate(0,ph/2,0);
+        postParts.push({geo:place(p,s.x-nz*o,0,s.z+nx*o,0),color:0x8a9097}); }); }
+      else if(code!=='CHEVRON'||true){ const p=new THREE.CylinderGeometry(0.04,0.04,ph,6); p.translate(0,ph/2,0);
+        postParts.push({geo:place(p,s.x,0,s.z,0),color:0x8a9097}); }
+    });
+    im.castShadow=true; signGroup.add(im);
+  });
+  signGroup.add(new THREE.Mesh(mergeColored(postParts),new THREE.MeshStandardMaterial({vertexColors:true,metalness:0.6,roughness:0.4})));
+  signGroup.add(new THREE.Mesh(mergeColored(backs),new THREE.MeshStandardMaterial({vertexColors:true,metalness:0.5,roughness:0.5})));
+}
+
+/* ---- cycle sheds: steel frame, colour-coated roof, M20 concrete base ---- */
+const shedParts=[], cyclePos=[];
+GK.sheds.forEach(s=>{
+  const n=6, hw=GK.shedL/2/s.r;               // radians
+  const a0=s.t*Math.PI/180-hw;
+  const rb=s.r+GK.shedD/2-0.25, rf=s.r-GK.shedD/2+0.25;
+  for(let i=0;i<n;i++){
+    const a=a0+2*hw*i/(n-1);
+    [[rb,2.75],[rf,2.35]].forEach(q=>{ const c=new THREE.BoxGeometry(0.1,q[1],0.1); c.translate(0,q[1]/2+0.2,0);
+      const p=polar(q[0],a,0); shedParts.push({geo:place(c,p.x,0,p.z,0),color:0x46505a}); });
+    const raf=new THREE.BoxGeometry(GK.shedD+0.4,0.12,0.08); raf.rotateZ(Math.atan2(0.4,GK.shedD));
+    const pm=polar(s.r,a,0); shedParts.push({geo:place(raf,pm.x,2.78,pm.z,faceX(a)),color:0x46505a});
+  }
+  const segs=10;
+  for(let k=0;k<segs;k++){
+    const a=a0+2*hw*(k+0.5)/segs, w=2*hw*s.r/segs+0.05;
+    const roof=new THREE.BoxGeometry(GK.shedD+0.9,0.05,w); roof.rotateZ(Math.atan2(0.4,GK.shedD));
+    const pm=polar(s.r,a,0); shedParts.push({geo:place(roof,pm.x,2.92,pm.z,faceX(a)),color:0x5f7f97});
+  }
+  const hoop=17;
+  for(let k=0;k<GK.cyclesPerShed;k++){
+    const a=a0+2*hw*(k+0.5)/GK.cyclesPerShed;
+    const rk=new THREE.TorusGeometry(0.32,0.025,5,10,Math.PI); rk.rotateY(Math.PI/2);
+    const pr=polar(s.r+0.9,a,0); shedParts.push({geo:place(rk,pr.x,0.2,pr.z,faceZ(a)+Math.PI/2),color:0xaab2ba});
+    if(Math.random()<0.72){ const pc=polar(s.r+0.1,a,0); cyclePos.push({x:pc.x,y:0.2,z:pc.z,ry:faceX(a)+Math.PI/2}); }
+  }
+});
+scene.add(Object.assign(new THREE.Mesh(mergeColored(shedParts),new THREE.MeshStandardMaterial({vertexColors:true,metalness:0.55,roughness:0.45,envMapIntensity:0.8})),{castShadow:true,receiveShadow:true}));
+function cycleGeo(col){
+  const p=[];
+  [-0.55,0.55].forEach(z=>{ const w=new THREE.TorusGeometry(0.33,0.035,5,14); w.translate(0,0.36,z); w.rotateY(Math.PI/2); p.push({geo:w,color:0x1d2126}); });
+  const f=new THREE.BoxGeometry(0.05,0.06,1.0); f.translate(0,0.62,0); p.push({geo:f,color:col});
+  const s=new THREE.BoxGeometry(0.05,0.4,0.05); s.translate(0,0.52,-0.25); p.push({geo:s,color:col});
+  const h=new THREE.BoxGeometry(0.5,0.04,0.04); h.translate(0,0.86,0.45); p.push({geo:h,color:0x222});
+  return mergeColored(p);
+}
+[0x2d6a4f,0x9b2226,0x264653].forEach((c,i)=>{ const l=cyclePos.filter((_,k)=>k%3===i); if(l.length) instance(cycleGeo(c),vcMat(0.6),l,true); });
+
+/* ---- parked cars and two-wheelers from the stall layout ---- */
+const carCols=[0xdfe3e8,0x2c3a52,0x8f2f2f,0x36474f,0xb9c0c7,0x9aa5ad];
+const parkedCars=carCols.map(()=>[]), parked2W=[];
+GEO.Q.stallPts.forEach(s=>{
+  const a=s.th*Math.PI/180;
+  if(s.type==='tw'){ if(Math.random()<0.7) parked2W.push({x:s.p[0],z:s.p[1],ry:-a+rnd(-0.08,0.08)}); return; }
+  if(Math.random()<(s.type==='acc'?0.5:0.78))
+    parkedCars[(Math.random()*carCols.length)|0].push({x:s.p[0],z:s.p[1],ry:-a+(Math.random()<0.5?0:Math.PI)});
+});
+function twGeo(col){
+  const p=[];
+  [-0.62,0.62].forEach(x=>{ const w=new THREE.CylinderGeometry(0.29,0.29,0.1,12); w.rotateX(Math.PI/2); w.translate(x,0.29,0); p.push({geo:w,color:0x15181c}); });
+  const b=new THREE.BoxGeometry(1.2,0.34,0.36); b.translate(0,0.55,0); p.push({geo:b,color:col});
+  const st=new THREE.BoxGeometry(0.5,0.1,0.32); st.translate(-0.2,0.77,0); p.push({geo:st,color:0x202226});
+  const hb=new THREE.BoxGeometry(0.06,0.06,0.62); hb.translate(0.55,0.98,0); p.push({geo:hb,color:0x222});
+  const fk=new THREE.BoxGeometry(0.06,0.6,0.06); fk.translate(0.55,0.66,0); p.push({geo:fk,color:0x555});
+  return mergeColored(p);
+}
+const carMat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.32,metalness:0.35,envMapIntensity:1.1});
+parkedCars.forEach((l,i)=>{ if(l.length) instance(carGeo(carCols[i]),carMat,l,true); });
+const twCols=[0x1f1f23,0xb23a3a,0x3a5fb2,0xd0d3d6];
+twCols.forEach((c,i)=>{ const l=parked2W.filter((_,k)=>k%4===i); if(l.length) instance(twGeo(c),vcMat(0.5),l,true); });
+
+/* ---- retractable bollards at forecourt mouths ---- */
+{
+  const bp=[];
+  GK.blocks.forEach(B=>{ for(let o=-4.8;o<=4.81;o+=1.6){ const p=SITEGEO.RO(B.th,31.0,o);
+    const c=new THREE.CylinderGeometry(0.1,0.1,0.9,8); c.translate(0,0.45,0); bp.push({geo:place(c,p[0],0.08,p[1],0),color:0x3a3f45});
+    const r=new THREE.CylinderGeometry(0.105,0.105,0.1,8); r.translate(0,0.75,0); bp.push({geo:place(r,p[0],0.08,p[1],0),color:0xf2c230}); } });
+  scene.add(new THREE.Mesh(mergeColored(bp),new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.4,metalness:0.5})));
+}
+
+/* ambient occlusion blobs under the blocks */
+const blobMat=new THREE.MeshBasicMaterial({map:T.blob,transparent:true,depthWrite:false});
+PLANS.forEach((Pl,i)=>{
+  const a=BASE[i], rM=(Pl.Ri+Pl.Ro)/2;
+  const b=new THREE.Mesh(new THREE.PlaneGeometry(Pl.Ro-Pl.Ri+14,Pl.L+14),blobMat);
+  b.rotation.x=-Math.PI/2; b.rotation.z=-a;
+  b.position.copy(polar(rM,a,0.13)); site.add(b);
+});
+
+/* fountain + monument on the rotary's central island */
+const fount=new THREE.Group(); site.add(fount);
+const basin=new THREE.Mesh(new THREE.CylinderGeometry(8.6,9.0,0.9,48),
+  new THREE.MeshStandardMaterial({map:T.stone,roughness:0.85,envMapIntensity:0.5}));
+basin.position.y=0.45+0.24; basin.castShadow=true; basin.receiveShadow=true; fount.add(basin);
+const waterMat=new THREE.MeshPhysicalMaterial({color:0x2f6a80,roughness:0.03,metalness:0.0,
+  transparent:true,opacity:0.82,normalMap:T.ripple,normalScale:new THREE.Vector2(0.5,0.5),
+  envMapIntensity:2.0,clearcoat:1,clearcoatRoughness:0.02});
+waterMat.emissive=new THREE.Color(0x0a2a38);
+const water=new THREE.Mesh(new THREE.CircleGeometry(8.3,48),waterMat);
+water.rotation.x=-Math.PI/2; water.position.y=1.02; fount.add(water);
+const pylonPts=[];
+for(let i=0;i<=8;i++){ const t=i/8; pylonPts.push(new THREE.Vector2(lerp(1.5,0.34,t*t*0.9+t*0.1),t*13)); }
+const pylon=new THREE.Mesh(new THREE.LatheGeometry(pylonPts,28),
+  new THREE.MeshStandardMaterial({map:T.stone,color:0xf0ece1,roughness:0.55,envMapIntensity:0.8}));
+pylon.position.y=1.04; pylon.castShadow=true; fount.add(pylon);
+const cap=new THREE.Mesh(new THREE.OctahedronGeometry(1.1,0),
+  new THREE.MeshStandardMaterial({color:0xd9a64f,roughness:0.2,metalness:0.9,envMapIntensity:1.6}));
+cap.position.y=14.64; cap.castShadow=true; fount.add(cap);
+const jets=[];
+for(let k=0;k<8;k++){
+  const a=k/8*TAU;
+  const j=new THREE.Mesh(new THREE.ConeGeometry(0.16,3.2,8),
+    new THREE.MeshStandardMaterial({color:0xd6eef5,transparent:true,opacity:0.4,roughness:0.05,emissive:0x88c8dc,emissiveIntensity:0.35}));
+  j.position.copy(polar(5.4,a,2.74)); jets.push(j); fount.add(j);
+}
+
+/* ---- trees: only where the ground is actually lawn ---- */
+function treeGeo(tone){
+  const parts=[];
+  const tr=new THREE.CylinderGeometry(0.15,0.26,2.2,7); tr.translate(0,1.1,0);
+  parts.push({geo:tr,color:0x5b4733});
+  const greens=[0x4e7b40,0x5f8d4b,0x3e6b37,0x709b55,0x557f46];
+  const base=greens[tone%greens.length];
+  const hi=new THREE.Color(base).offsetHSL(0,0,0.06).getHex();
+  [[0,2.9,0,1.6],[0.85,2.4,0.45,1.15],[-0.75,2.5,-0.5,1.05],[0.15,3.6,-0.3,0.98]].forEach((L,i)=>{
+    const s=new THREE.IcosahedronGeometry(L[3],1); jitter(s,0.11); s.translate(L[0],L[1],L[2]);
+    parts.push({geo:s,color:i%2?base:hi});
+  });
+  return mergeColored(parts);
+}
+const treeLists=[[],[],[],[],[]];
+function addTree(x,z,s){ if(!freeAt(x,z,2.2)) return; if(Math.hypot(x,z)<GK.rotFp+3) return;
+  treeLists[(Math.random()*5)|0].push({x,z,s,ry:rnd(0,TAU)}); }
+/* avenue trees flanking forecourts */
+BASE.forEach(a=>{ for(let s=36;s<56;s+=6.5) [-8.6,8.6].forEach(o=>{ const p=SITEGEO.RO(a/D2R,s,o); addTree(p[0],p[1],rnd(0.95,1.2)); }); });
+/* spoke verges: rows 3 m beyond the footpath */
+GK.spokes.forEach(th=>{ for(let r=66;r<104;r+=9) [-10.5,10.5].forEach(o=>{ const p=SITEGEO.RO(th,r,o); addTree(p[0],p[1],rnd(0.9,1.25)); }); });
+/* ring verge: outer tree belt 4 m beyond footpath, inner shade trees */
+for(let t=0;t<360;t+=5.2){ const p=SITEGEO.P(124.5,t); addTree(p[0],p[1],rnd(1.0,1.4)); }
+for(let k=0;k<110;k++){ const a=rnd(0,TAU), r=rnd(34,106); addTree(Math.cos(a)*r,Math.sin(a)*r,rnd(0.8,1.3)); }
+for(let k=0;k<420;k++){ const a=rnd(0,TAU), r=rnd(128,215); const x=Math.cos(a)*r, z=Math.sin(a)*r;
+  if(Math.abs(x)<14&&z>100) continue; addTree(x,z,rnd(0.9,1.7)); }
+for(let x=-300;x<300;x+=11){ addTree(x+rnd(-2,2),185+rnd(0,3),rnd(1,1.5)); addTree(x+rnd(-2,2),160+rnd(-3,0),rnd(1,1.4)); }
+treeLists.forEach((list,i)=>{ if(list.length) instance(treeGeo(i),vcMat(0.96),list,true); });
+
+/* ---- people on footpaths only ---- */
+const shirts=[0xd9d9e2,0x3f6ea8,0xc2564e,0x4c9070,0xe0b055,0x8a5fa8];
+const pplLists=shirts.map(()=>[]);
+{
+  let placed=0, guard=0;
+  while(placed<260&&guard<20000){ guard++;
+    const a=rnd(0,TAU), r=rnd(28,121); const x=Math.cos(a)*r, z=Math.sin(a)*r;
+    const k=kindAt(x,z); if(k!=='icbp'&&k!=='icbpH') continue;
+    if(Math.random()<0.35&&r>100) continue;
+    pplLists[(Math.random()*shirts.length)|0].push({x,z,ry:rnd(0,TAU)}); placed++;
+  }
+  for(let k=0;k<14;k++) pplLists[k%6].push({x:rnd(-76,-32),z:rnd(165.4,167.6),ry:rnd(0,TAU)}); // bus stop
+}
+pplLists.forEach((l,i)=>{ if(l.length) instance(personGeo(shirts[i]),vcMat(0.8),l,true); });
+
+/* =====================================================================
+   LIVE TRAFFIC — vehicles follow the designed movements (keep-left,
+   clockwise at both roundabouts, one-way parking aisles)
+   ===================================================================== */
+const Qj=GK.J2;
+const DG=Math.PI/180;
+const PP=(r,t)=>SITEGEO.P(r,t), RR=(t,r,o)=>SITEGEO.RO(t,r,o);
+const aroundJ2=(a0,a1,R)=>{ const o=[]; const n=Math.max(3,Math.ceil(Math.abs(a1-a0)/15)); for(let i=0;i<=n;i++){const a=(a0+(a1-a0)*i/n)*DG;o.push([Qj[0]+R*Math.cos(a),Qj[1]+R*Math.sin(a)]);} return o; };
+const ringLane=(r,t0,t1)=>{ const o=[]; const st=t1>t0?2:-2; for(let t=t0; st>0?t<=t1:t>=t1; t+=st){ let p=PP(r,t);
+  const dx=p[0]-Qj[0], dz=p[1]-Qj[1], d=Math.hypot(dx,dz); if(d<11){ p=[Qj[0]+dx/d*11,Qj[1]+dz/d*11]; } o.push(p);} return o; };
+const arcL=(r,t0,t1)=>{ const o=[]; const n=Math.max(2,Math.ceil(Math.abs(t1-t0)/4)); for(let i=0;i<=n;i++) o.push(PP(r,t0+(t1-t0)*i/n)); return o; };
+const radial=(t,r0,r1,o)=>{ const n=Math.max(2,Math.ceil(Math.abs(r1-r0)/6)); const q=[]; for(let i=0;i<=n;i++) q.push(RR(t,r0+(r1-r0)*i/n,o)); return q; };
+const line=(a,b)=>{ const n=Math.max(2,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/8)); const q=[]; for(let i=0;i<=n;i++) q.push([a[0]+(b[0]-a[0])*i/n,a[1]+(b[1]-a[1])*i/n]); return q; };
+function chaikin(pts,closed,it){
+  for(let k=0;k<it;k++){ const o=[]; const n=pts.length;
+    if(!closed) o.push(pts[0]);
+    for(let i=0;i<(closed?n:n-1);i++){ const a=pts[i], b=pts[(i+1)%n];
+      o.push([a[0]*0.75+b[0]*0.25,a[1]*0.75+b[1]*0.25]); o.push([a[0]*0.25+b[0]*0.75,a[1]*0.25+b[1]*0.75]); }
+    if(!closed) o.push(pts[n-1]); pts=o; }
+  return pts;
+}
+function mkRoute(parts,closed,speed){
+  let pts=[]; parts.forEach(p=>p.forEach(q=>{ const l=pts[pts.length-1]; if(!l||Math.hypot(l[0]-q[0],l[1]-q[1])>0.3) pts.push(q); }));
+  pts=chaikin(pts,closed,3);
+  const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+  if(closed) cum.push(cum[cum.length-1]+Math.hypot(pts[0][0]-pts[pts.length-1][0],pts[0][1]-pts[pts.length-1][1]));
+  return {pts,cum,L:cum[cum.length-1],closed,speed};
+}
+function sampleRoute(R,s){
+  s=((s%R.L)+R.L)%R.L; let lo=0,hi=R.cum.length-1; while(hi-lo>1){const m=(lo+hi)>>1; if(R.cum[m]<=s) lo=m; else hi=m;}
+  const a=R.pts[lo], b=R.pts[(lo+1)%R.pts.length], t=(s-R.cum[lo])/((R.cum[lo+1]-R.cum[lo])||1);
+  return {x:a[0]+(b[0]-a[0])*t, z:a[1]+(b[1]-a[1])*t, ry:-Math.atan2(b[1]-a[1],b[0]-a[0])};
+}
+const EB=172.4, WB=176.1;
+const inJ1=[line([-330,EB],[-14,EB]),[[-6,171.2],[-1.9,166]],line([-1.9,164],[-1.9,131])];
+const outJ1E=[line([1.9,127],[1.9,166]),[[4,171],[12,EB]],line([14,EB],[330,EB])];
+const ROUTES=[
+  /* A — visitor: main road → approach → J2 → south spoke → rotary → spoke 210 → ring (anticlockwise) → J2 → out */
+  mkRoute([...inJ1,aroundJ2(112,250,11),radial(90,100,30,1.75),arcL(25.2,97,203),radial(210,31,108,-1.75),
+    ringLane(112.25,204,103),aroundJ2(190,430,11),...outJ1E],false,6.2),
+  /* B — car park: main road (westbound) → right into approach → J2 → ring E arm → car park aisle (one-way) → exit → J2 → out right */
+  mkRoute([line([330,WB],[14,WB]),[[6,174],[-1.9,166]],line([-1.9,164],[-1.9,131]),aroundJ2(112,340,11),
+    ringLane(112.25,80,70),radial(66,109,99,0),arcL(98,64,-16),radial(-18,99,109,0),ringLane(115.75,-14,80),
+    aroundJ2(10,70,11),line([1.9,127],[1.9,166]),[[-2,172.5],[-12,WB]],line([-14,WB],[-330,WB])],false,6.0),
+  /* C / D — ring loops */
+  mkRoute([ringLane(115.75,0,358)],true,6.5),
+  mkRoute([ringLane(112.25,360,2)],true,6.5),
+  /* E — rotary circulation (clockwise) */
+  mkRoute([arcL(25.2,0,359)],true,5.2),
+  /* F — Semmanchery Road through traffic */
+  mkRoute([line([-330,EB],[330,EB])],false,11),
+  mkRoute([line([330,WB],[-330,WB])],false,11),
+  /* G — two-wheeler: approach → J2 → south spoke → left into 2W park → aisle (westbound) → exit → ring → J2 → out */
+  mkRoute([...inJ1,aroundJ2(112,250,11),radial(90,100,81,1.75),[RR(90,80.75,6),RR(90,80.75,9)],arcL(80.5,97,124.9),
+    radial(124.9,80.5,109,0),ringLane(112.25,122,103),aroundJ2(190,430,11),...outJ1E],false,5.4)
+];
+const FLEET=[ {r:0,n:3,kind:'car'},{r:1,n:3,kind:'car'},{r:2,n:4,kind:'car'},{r:3,n:3,kind:'car'},{r:3,n:2,kind:'tw'},
+  {r:4,n:3,kind:'car'},{r:5,n:5,kind:'car'},{r:6,n:5,kind:'car'},{r:7,n:4,kind:'tw'},{r:2,n:2,kind:'tw'} ];
+const movers=[];
+FLEET.forEach(f=>{ for(let i=0;i<f.n;i++) movers.push({route:ROUTES[f.r],s:ROUTES[f.r].L*(i/f.n)+rnd(0,6),kind:f.kind}); });
+const moveCarMeshes=carCols.map(c=>{ const m=new THREE.InstancedMesh(carGeo(c),carMat,movers.length); m.count=0; m.castShadow=true; scene.add(m); return m; });
+const moveTwMesh=new THREE.InstancedMesh(twGeo(0x2a2d33),vcMat(0.5),movers.length); moveTwMesh.castShadow=true; scene.add(moveTwMesh);
+movers.forEach((m,i)=>{ m.mesh=m.kind==='tw'?-1:(i%carCols.length); });
+let trafficOn=true;
+const _d=new THREE.Object3D();
+function updateTraffic(dt){
+  const cnt=carCols.map(()=>0); let tw=0;
+  movers.forEach(m=>{
+    if(trafficOn) m.s+=m.route.speed*dt;
+    if(!m.route.closed&&m.s>m.route.L) m.s-=m.route.L;
+    const p=sampleRoute(m.route,m.s);
+    _d.position.set(p.x,0.12,p.z); _d.rotation.set(0,p.ry,0); _d.updateMatrix();
+    if(m.kind==='tw'){ moveTwMesh.setMatrixAt(tw++,_d.matrix); }
+    else { const M=moveCarMeshes[m.mesh]; M.setMatrixAt(cnt[m.mesh]++,_d.matrix); }
+  });
+  moveCarMeshes.forEach((M,i)=>{ M.count=cnt[i]; M.instanceMatrix.needsUpdate=true; });
+  moveTwMesh.count=tw; moveTwMesh.instanceMatrix.needsUpdate=true;
+}
+updateTraffic(0);
+
+/* =====================================================================
+   environment map (reflections)
+   ===================================================================== */
+let pmrem=null, envRT=null;
+try{ pmrem=new THREE.PMREMGenerator(renderer); pmrem.compileEquirectangularShader(); }catch(e){ pmrem=null; }
+const envScene=new THREE.Scene();
+const envSky=new THREE.Mesh(new THREE.SphereGeometry(40,24,16),
+  new THREE.MeshBasicMaterial({side:THREE.BackSide}));
+envScene.add(envSky);
+const envGnd=new THREE.Mesh(new THREE.CircleGeometry(38,24),
+  new THREE.MeshBasicMaterial({color:0x4a5b3e}));
+envGnd.rotation.x=-Math.PI/2; envGnd.position.y=-2; envScene.add(envGnd);
+
+function refreshEnv(){
+  if(!pmrem) return;
+  try{
+    envSky.material.map=skyMat.map;
+    envSky.material.needsUpdate=true;
+    if(envRT) envRT.dispose();
+    envRT=pmrem.fromScene(envScene,0.05,1,200);
+    scene.environment=envRT.texture;
+  }catch(e){ /* reflections are a bonus, not a requirement */ }
+}
+
+/* =====================================================================
+   sun / time of day
+   ===================================================================== */
+const KEYS=[
+  {t:5.0, top:'#141d38', hor:'#8d4c46', gnd:'#2b2733', sun:0xff9155, si:0.18, hi:0.30,
+   hs:0x3d4a6b, hg:0x241f1b, fog:0x3a3d54, exp:1.02, night:1},
+  {t:7.0, top:'#4d84c4', hor:'#f0bf90', gnd:'#e6d5b8', sun:0xffd0a0, si:1.00, hi:0.45,
+   hs:0xb9cfe8, hg:0x3f4732, fog:0xd9dbd2, exp:1.05, night:0.05},
+  {t:12.0,top:'#3f83d6', hor:'#cfe3f3', gnd:'#eef4f8', sun:0xfff4e4, si:1.62, hi:0.55,
+   hs:0xcfe0f2, hg:0x44502f, fog:0xd8e4ee, exp:1.02, night:0},
+  {t:16.5,top:'#4d8ecb', hor:'#f2d7a8', gnd:'#f7e8ce', sun:0xffe2b4, si:1.32, hi:0.48,
+   hs:0xd2ddec, hg:0x424c30, fog:0xdfdfd6, exp:1.06, night:0},
+  {t:18.6,top:'#243a6b', hor:'#e08a4c', gnd:'#c46b45', sun:0xff8340, si:0.72, hi:0.36,
+   hs:0x6d7ba0, hg:0x2c2a20, fog:0x9d7a6a, exp:1.10, night:0.45},
+  {t:20.5,top:'#080e1e', hor:'#1e2740', gnd:'#131a2c', sun:0x2f3c5c, si:0.05, hi:0.20,
+   hs:0x2a3554, hg:0x121510, fog:0x1a2136, exp:1.12, night:1}
+];
+const _cA=new THREE.Color(),_cB=new THREE.Color(),_cC=new THREE.Color();
+let clockH=8.5, nightAmt=0;
+
+function setTime(h){
+  clockH=h;
+  let i=0; while(i<KEYS.length-2 && h>KEYS[i+1].t) i++;
+  const A=KEYS[i], B=KEYS[i+1];
+  const t=clamp((h-A.t)/(B.t-A.t),0,1);
+  const mixHex=(a,b)=>{ _cA.set(a); _cB.set(b); return '#'+_cA.lerp(_cB,t).getHexString(); };
+
+  const oldSky=skyMat.map;
+  skyMat.map=skyTex(mixHex(A.top,B.top),mixHex(A.hor,B.hor),mixHex(A.gnd,B.gnd));
+  skyMat.needsUpdate=true;
+  if(oldSky) oldSky.dispose();
+
+  const si=lerp(A.si,B.si,t);
+  _cC.set(A.sun); _cA.set(B.sun); _cC.lerp(_cA,t);
+  sun.color.copy(_cC); sun.intensity=si;
+  sunSprite.material.color.copy(_cC);
+  sunSprite.material.opacity=clamp(si*0.75,0,1);
+
+  hemi.intensity=lerp(A.hi,B.hi,t);
+  _cC.set(A.hs); _cA.set(B.hs); hemi.color.copy(_cC.lerp(_cA,t));
+  _cC.set(A.hg); _cA.set(B.hg); hemi.groundColor.copy(_cC.lerp(_cA,t));
+  _cC.set(A.fog); _cA.set(B.fog); scene.fog.color.copy(_cC.lerp(_cA,t));
+  renderer.toneMappingExposure=lerp(A.exp,B.exp,t);
+
+  /* sun geometry: rises east (+X), transits south (+Z), sets west (−X) */
+  const u=clamp((h-5.6)/(18.9-5.6),0,1);
+  const az=Math.PI*u;
+  const el=Math.max(2.5*D2R, 63*D2R*Math.sin(Math.PI*u));
+  const dir=new THREE.Vector3(Math.cos(az)*Math.cos(el),Math.sin(el),Math.sin(az)*Math.cos(el));
+  sun.position.copy(dir).multiplyScalar(420);
+  sun.target.position.set(0,0,0);
+  bounce.position.copy(dir).multiplyScalar(-260).setY(90);
+  bounce.intensity=lerp(0.30,0.10,Math.max(A.night,B.night));
+  sunSprite.position.copy(dir).multiplyScalar(1400);
+
+  nightAmt=lerp(A.night,B.night,t);
+  glassMats.forEach(m=>{ m.emissiveIntensity=nightAmt*0.75; });
+  lampMats.forEach(m=>{ m.emissiveIntensity=nightAmt*2.4; });
+  if(typeof glowMat!=='undefined') glowMat.opacity=nightAmt*0.62;
+  if(typeof signMats!=='undefined') signMats.forEach(m=>{ m.emissiveIntensity=nightAmt*0.28; });
+  waterMat.emissiveIntensity=nightAmt*0.5;
+
+  /* readout */
+  const hh=Math.floor(h), mm=Math.round((h-hh)*60);
+  const el2=document.getElementById('clockT');
+  el2.childNodes[0].nodeValue=String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+  const lab=h<6.6?'First light':h<10?'Morning':h<15?'Midday':h<17.6?'Afternoon':
+            h<19.2?'Golden hour':h<20?'Dusk':'Night';
+  document.getElementById('clockLabel').textContent=lab;
+}
+setTime(8.5);
+refreshEnv();
+
+/* =====================================================================
+   camera + controls
+   ===================================================================== */
+const target=new THREE.Vector3(0,10,0);
+let radius=330, theta=Math.PI*0.30, phi=Math.PI*0.30;
+let want={radius:radius,theta:theta,phi:phi,tx:0,ty:10,tz:0};
+let autoOrbit=false, exploded=0, explodeTarget=0;
+
+function applyCamera(){
+  camera.position.set(
+    target.x+radius*Math.sin(phi)*Math.cos(theta),
+    target.y+radius*Math.cos(phi),
+    target.z+radius*Math.sin(phi)*Math.sin(theta));
+  camera.lookAt(target);
+}
+function goto(r,th,ph,tx,ty,tz){
+  want.radius=r; want.theta=th; want.phi=ph; want.tx=tx; want.ty=ty; want.tz=tz; intro=false;
+}
+let intro=true, introT=0;
+goto(300,Math.PI*0.36,Math.PI*0.28,0,8,30);
+radius=520; theta=Math.PI*0.62; phi=Math.PI*0.16;
+target.set(0,12,0);
+applyCamera();
+
+const dom=renderer.domElement;
+const ptrs=new Map();
+let pinchDist=0;
+dom.addEventListener('pointerdown',e=>{
+  dom.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY,btn:e.button});
+  intro=false; autoOrbit=false; document.getElementById('bOrbit').classList.remove('on');
+  const h=document.getElementById('hint'); if(h) h.style.opacity=0;
+});
+function endPtr(e){ ptrs.delete(e.pointerId); pinchDist=0; }
+dom.addEventListener('pointerup',endPtr);
+dom.addEventListener('pointercancel',endPtr);
+dom.addEventListener('pointermove',e=>{
+  const p=ptrs.get(e.pointerId); if(!p) return;
+  const dx=e.clientX-p.x, dy=e.clientY-p.y;
+  p.x=e.clientX; p.y=e.clientY;
+  if(ptrs.size===2){
+    const it=ptrs.values(); const a=it.next().value, b=it.next().value;
+    const d=Math.hypot(a.x-b.x,a.y-b.y);
+    if(pinchDist) want.radius=clamp(want.radius*(pinchDist/d),14,760);
+    pinchDist=d; return;
+  }
+  if(p.btn===2||e.shiftKey){
+    const right=new THREE.Vector3(Math.sin(theta+Math.PI/2),0,Math.cos(theta+Math.PI/2));
+    const fwd=new THREE.Vector3(Math.cos(theta+Math.PI/2),0,-Math.sin(theta+Math.PI/2));
+    const k=radius*0.0016;
+    want.tx-=right.x*dx*k+fwd.x*dy*k; want.tz-=right.z*dx*k+fwd.z*dy*k;
+  }else{
+    want.theta-=dx*0.0055;
+    want.phi=clamp(want.phi-dy*0.0055,0.06,Math.PI/2-0.015);
+  }
+});
+dom.addEventListener('contextmenu',e=>e.preventDefault());
+dom.addEventListener('wheel',e=>{
+  e.preventDefault(); intro=false;
+  want.radius=clamp(want.radius*(1+e.deltaY*0.0012),14,760);
+},{passive:false});
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+/* =====================================================================
+   UI wiring
+   ===================================================================== */
+function segment(id,fn){
+  const el=document.getElementById(id);
+  el.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [].forEach.call(el.querySelectorAll('button'),x=>x.classList.remove('on'));
+    b.classList.add('on'); fn(b.dataset);
+  });
+}
+let roofOn=true, curLevel='all', curBlock='all';
+
+function applyVisibility(){
+  blocks.forEach((B,bi)=>{
+    const showB=(curBlock==='all')||(+curBlock===bi);
+    B.root.visible=showB;
+    B.label.visible=showB&&curBlock==='all';
+    B.levels.forEach((L,li)=>{ L.visible=(curLevel==='all')||(+curLevel===li); });
+    B.roof.visible=roofOn&&curLevel==='all';
+  });
+}
+segment('levelSeg',d=>{ curLevel=d.l; applyVisibility(); });
+segment('blockSeg',d=>{
+  curBlock=d.b; applyVisibility();
+  if(curBlock==='all'){ goto(276,Math.PI*0.30,Math.PI*0.33,0,12,0); }
+  else{
+    const c=blocks[+curBlock].center;
+    goto(112,blocks[+curBlock].aC+Math.PI,Math.PI*0.34,c.x*0.55,14,c.z*0.55);
+  }
+});
+segment('viewSeg',d=>{
+  if(d.v==='aerial') goto(330,Math.PI*0.30,Math.PI*0.22,0,10,20);
+  if(d.v==='rotary') goto(95,Math.PI*0.40,Math.PI*0.26,0,2,0);
+  if(d.v==='j2')     goto(120,Math.PI*0.45,Math.PI*0.30,0,2,138);
+  if(d.v==='car')    goto(95,Math.PI*0.08,Math.PI*0.27,78,2,40);
+  if(d.v==='tw')     goto(80,Math.PI*0.62,Math.PI*0.26,-28,2,78);
+  if(d.v==='eye')    goto(30,Math.PI*0.52,Math.PI*0.47,-4,2.2,58);
+  if(d.v==='plan')   goto(470,-Math.PI/2,0.05,0,0,30);
+});
+document.getElementById('sCar').textContent=(GEO.Q.stalls.car+GEO.Q.stalls.acc)+' (incl. '+GEO.Q.stalls.acc+' accessible)';
+document.getElementById('sTw').textContent=GEO.Q.stalls.tw;
+document.getElementById('sLt').textContent=GEO.L.length;
+document.getElementById('sSg').textContent=GEO.S.length;
+document.getElementById('sX').textContent=GEO.X.filter(x=>x.raised).length+' + '+GEO.X.filter(x=>!x.raised).length+' at-grade';
+const bTr=document.getElementById('bTraffic');
+bTr.addEventListener('click',()=>{ trafficOn=!trafficOn; bTr.classList.toggle('on',trafficOn); bTr.textContent=trafficOn?'Traffic moving':'Traffic paused'; });
+const bSg=document.getElementById('bSigns');
+bSg.addEventListener('click',()=>{ signGroup.visible=!signGroup.visible; bSg.classList.toggle('on',signGroup.visible); bSg.textContent=signGroup.visible?'Signs shown':'Signs hidden'; });
+const bNt=document.getElementById('bNight');
+bNt.addEventListener('click',()=>{ const night=clockH<19.5; const v=night?2030:1030; slider.value=v; setTime(Math.floor(v/100)+(v%100)/60); refreshEnv(); bNt.classList.toggle('on',night); bNt.textContent=night?'Day view':'Night view'; });
+const slider=document.getElementById('timeSlider');
+const bRoof=document.getElementById('bRoof');
+bRoof.addEventListener('click',()=>{
+  roofOn=!roofOn; bRoof.textContent=roofOn?'Roof on':'Roof off';
+  bRoof.classList.toggle('on',!roofOn); applyVisibility();
+});
+const bExp=document.getElementById('bExplode');
+bExp.addEventListener('click',()=>{
+  explodeTarget=explodeTarget>0.5?0:1;
+  bExp.classList.toggle('on',explodeTarget>0.5);
+});
+const bOrb=document.getElementById('bOrbit');
+bOrb.addEventListener('click',()=>{
+  autoOrbit=!autoOrbit; bOrb.classList.toggle('on',autoOrbit); intro=false;
+});
+const bQ=document.getElementById('bQuality');
+bQ.addEventListener('click',()=>{
+  quality=quality?0:1;
+  bQ.textContent='Quality: '+(quality?'high':'fast');
+  bQ.classList.toggle('on',!quality);
+  renderer.setPixelRatio(quality?Math.min(devicePixelRatio,2):1);
+  sun.shadow.mapSize.set(quality?4096:1024,quality?4096:1024);
+  if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; }
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+slider.addEventListener('input',()=>{
+  const v=+slider.value; setTime(Math.floor(v/100)+(v%100)/60);
+});
+slider.addEventListener('change',refreshEnv);
+document.getElementById('uiToggle').addEventListener('click',e=>{
+  document.body.classList.toggle('bare');
+  e.currentTarget.textContent=document.body.classList.contains('bare')?'☰':'✕';
+});
+applyVisibility();
+
+/* =====================================================================
+   loop
+   ===================================================================== */
+let tick=0, sbTick=0;
+const sbBar=document.getElementById('sbBar'), sbLabel=document.getElementById('sbLabel');
+const NICE=[2,5,10,20,50,100,200,500];
+function updateScaleBar(){
+  const mpp=(2*radius*Math.tan(camera.fov*D2R/2))/innerHeight;
+  const wanted=110*mpp;
+  let pick=NICE[0];
+  NICE.forEach(n=>{ if(Math.abs(n-wanted)<Math.abs(pick-wanted)) pick=n; });
+  const px=clamp(Math.round(pick/mpp),44,240);
+  sbBar.style.width=px+'px';
+  [].forEach.call(sbBar.children,c=>{ c.style.width=(px/4)+'px'; });
+  sbLabel.textContent=pick+' m';
+}
+function frame(){
+  requestAnimationFrame(frame);
+  tick+=0.016;
+  updateTraffic(0.016);
+  if((sbTick++ % 10)===0 && sbBar) updateScaleBar();
+
+  if(intro){
+    introT=Math.min(1,introT+0.0042);
+    const e=1-Math.pow(1-introT,3.2);
+    radius=lerp(520,want.radius,e);
+    theta=lerp(Math.PI*0.62,want.theta,e);
+    phi=lerp(Math.PI*0.16,want.phi,e);
+    if(introT>=1) intro=false;
+  }else{
+    if(autoOrbit) want.theta+=0.0011;
+    const k=0.085;
+    radius=lerp(radius,want.radius,k);
+    theta=lerp(theta,want.theta,k);
+    phi=lerp(phi,want.phi,k);
+    target.x=lerp(target.x,want.tx,k);
+    target.y=lerp(target.y,want.ty,k);
+    target.z=lerp(target.z,want.tz,k);
+  }
+  applyCamera();
+
+  exploded=lerp(exploded,explodeTarget,0.09);
+  blocks.forEach(B=>{
+    B.levels.forEach((L,i)=>{ L.position.y=exploded*i*9; });
+    B.roof.position.y=exploded*3*9;
+    B.label.position.y=BLK.top+9+exploded*30;
+  });
+
+  T.ripple.offset.x=tick*0.012; T.ripple.offset.y=tick*0.008;
+  water.position.y=1.02+Math.sin(tick*1.4)*0.012;
+  jets.forEach((j,i)=>{ j.scale.y=1+Math.sin(tick*2.4+i)*0.09; });
+  cap.rotation.y=tick*0.25;
+
+  renderer.render(scene,camera);
+}
+frame();
+
+addEventListener('load',()=>{
+  setTimeout(()=>{
+    const v=document.getElementById('veil');
+    v.style.opacity='0';
+    setTimeout(()=>v.remove(),950);
+  },500);
+});
+setTimeout(()=>{
+  const v=document.getElementById('veil');
+  if(v){ v.style.opacity='0'; setTimeout(()=>{ if(v.parentNode) v.remove(); },950); }
+},2600);
+</script>
+</body>
+</html>
